@@ -1,0 +1,71 @@
+dl {
+  dt {
+    position: relative;
+    cursor: pointer;
+    padding: 0 5px;
+    & > a,
+    & > span {
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 16px;
+      display: block;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      height: 40px;
+      overflow: hidden;
+      line-height: 40px;
+      padding-right: 10px;
+      transition: all 0.3s;
+    }
+    & > a {
+      &:hover {
+        color: var(--color-heading);
+      }
+    }
+    & > i {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 5px;
+      right: 10px;
+      top: 50%;
+      transition: all 0.3s;
+      color: rgba(0, 0, 0, 0.85);
+      transform: translateY(-50%);
+      line-height: 40px;
+      &:before,
+      &:after {
+        background-color: var(--color-text);
+        position: absolute;
+        left: 43.33%;
+        top: 43.33%;
+        width: 6px;
+        height: 1.5px;
+        border-radius: 2px;
+        content: '';
+      }
+      &:before {
+        transform: rotate(-45deg) translateX(2.5px);
+      }
+      &:after {
+        transform: rotate(45deg) translateX(-2.5px);
+      }
+    }
+  }
+  & > dd {
+    display: none;
+  }
+  &.open {
+    & > dt > i {
+      &:before {
+        transform: rotate(45deg) translateX(2.5px);
+      }
+      &:after {
+        transform: rotate(-45deg) translateX(-2.5px);
+      }
+    }
+    & > dd {
+      display: block;
+    }
+  }
+}
