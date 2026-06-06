@@ -16,8 +16,7 @@ defineOptions({ name: 'LayoutMain' })
 main {
   background-color: var(--color-background);
   padding: 10px;
-  flex: 1;
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: 100%;
+  overflow: auto;
 }
 </style>
