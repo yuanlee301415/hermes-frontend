@@ -14,7 +14,7 @@ defineOptions({ name: 'LayoutMain' })
 
 <style lang="less">
 main {
-  background-color: var(--color-background);
+  background-color: var(--bg-primary);
   padding: 10px;
   height: 100%;
   overflow: auto;

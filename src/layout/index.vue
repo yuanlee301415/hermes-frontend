@@ -16,15 +16,13 @@ defineOptions({ name: 'LayoutContainer' })
 </script>
 
 <style scoped lang="less">
-@sideWidth: 240px;
-
 .layout-container {
   display: flex;
   width: 100%;
   height: 100%;
 
   .side-container {
-    width: @sideWidth;
+    width: var(--sidebar-width);
     height: 100vh;
     overflow: hidden;
   }
