@@ -23,6 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .eslintcache
+/types/auto-imports.d.ts
+/types/components.d.ts
 
 /server/db.json5
 /Todo
