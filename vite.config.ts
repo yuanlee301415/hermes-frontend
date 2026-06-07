@@ -54,5 +54,22 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       __APP_BUILD_TIME__: JSON.stringify(__APP_BUILD_TIME__),
       __APP_INFO__: JSON.stringify(__APP_INFO__),
     },
+    build: {
+      rolldownOptions: {
+        output: {
+          chunkFileNames: 'assets/js/[name].[hash].js',
+          entryFileNames: 'assets/js/[name].[hash].js',
+          assetFileNames: 'assets/[ext]/[name].[hash].[ext]',
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              const [name] = id.split('/node_modules/')[1].split('/')
+              if (['vue', 'pinia', 'vue-router'].includes(name)) return `vendor-vue`
+              if (name === 'naive-ui') return `vendor-ui`
+              return `vendor-${name}`
+            }
+          }
+        }
+      }
+    }
   };
 });
