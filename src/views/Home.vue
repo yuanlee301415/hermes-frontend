@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 style="line-height: 150vh">Home</h1>
+    <h1>Home</h1>
   </div>
 </template>
 
