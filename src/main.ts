@@ -3,7 +3,7 @@ import App from './App.vue'
 import { setupRouter } from './router'
 import { setupStore } from './store'
 import { setupNaiveDiscreteApi } from './plugins'
-import './assets/main.less'
+import './styles/main.less'
 
 function bootstrap() {
   setupNaiveDiscreteApi()
