@@ -5,16 +5,15 @@ export type Component<T = unknown> = DefineComponent | (() => Promise<typeof imp
 
 type _RouteMeta = Partial<{
   title: string
-  hiddenMenu: boolean
-  hiddenChildrenInMenu: boolean
+  icon: string
 }>
 
 export type AppRouteMeta = RouteMeta & _RouteMeta
 
 // @ts-expect-error: `RouteMeta` 类型，无法扩展
 export interface AppRouteRecordRaw extends Omit<RouteRecordRaw, 'meta'> {
-  name: string
-  meta: AppRouteMeta
+  name?: string
+  meta?: AppRouteMeta
   component?: Component | string
   components?: Component
   children?: AppRouteRecordRaw[]

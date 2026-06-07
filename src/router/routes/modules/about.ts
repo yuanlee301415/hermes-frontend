@@ -8,15 +8,13 @@ const ABOUT_ROUTE: AppRouteRecordRaw = {
   redirect: '/about',
   component: LAYOUT,
   meta: {
-    title: '关于',
-    hiddenChildrenInMenu: true,
+    title: '关于'
   },
   children: [
     {
       path: '',
       name: 'AboutPage',
-      component: () => import('@/views/About.vue'),
-      meta: {},
+      component: () => import('@/views/About.vue')
     },
   ],
 }
