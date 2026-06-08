@@ -17,3 +17,6 @@ interface ImportMetaEnv {
   // APP Title
   readonly VITE_APP_TITLE: string;
 }
+
+// 声明 vite-plugin-svg-icons 虚拟模块
+declare module 'virtual:svg-icons-register';

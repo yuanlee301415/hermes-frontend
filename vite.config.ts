@@ -17,6 +17,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     VITE_PERMISSION,
     VITE_BASE_API,
     VITE_PROXY,
+    VITE_ICON_LOCAL_PREFIX
   } = env;
   const __APP_VERSION__ = [pkg.version, VITE_INTERNAL_VERSION].join(".");
   const __APP_BUILD_TIME__ = new Date().toLocaleString('default', {hourCycle: 'h24'});
@@ -30,7 +31,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   console.log("env:\n", env);
 
   return {
-    plugins: setupVitePlugins(__APP_RELEASE__),
+    plugins: setupVitePlugins(__APP_RELEASE__, VITE_ICON_LOCAL_PREFIX),
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
