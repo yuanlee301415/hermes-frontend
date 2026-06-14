@@ -5,7 +5,7 @@ export type Component<T = unknown> = DefineComponent | (() => Promise<typeof imp
 
 type _RouteMeta = Partial<{
   title: string
-  icon: string
+  localIcon: string
 }>
 
 export type AppRouteMeta = RouteMeta & _RouteMeta

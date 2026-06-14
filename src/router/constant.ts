@@ -3,6 +3,6 @@ export const LAYOUT = () => import('@/layout/index.vue')
 export const EXCEPTION_404 = () => import('@/views/404.vue')
 
 export const HOME_ROUTE_NAME = 'Home'
+export const CHAT_ROUTE_NAME = 'Chat'
 export const LOGIN_ROUTE_NAME = 'Login'
-export const SEARCH_ROUTE_NAME = 'Login'
 export const PAGE_NOT_FOUND_NAME = 'PageNotFound'

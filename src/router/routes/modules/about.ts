@@ -2,9 +2,10 @@ import type { AppRouteRecordRaw } from '@/router/types'
 
 import { LAYOUT } from '@/router/constant'
 
+const ABOUT_ROUTE_NAME = 'About'
 const ABOUT_ROUTE: AppRouteRecordRaw = {
   path: '/about',
-  name: 'About',
+  name: ABOUT_ROUTE_NAME,
   redirect: '/about',
   component: LAYOUT,
   meta: {
@@ -13,7 +14,7 @@ const ABOUT_ROUTE: AppRouteRecordRaw = {
   children: [
     {
       path: '',
-      name: 'AboutPage',
+      name: ABOUT_ROUTE_NAME + '.About',
       component: () => import('@/views/About.vue')
     },
   ],
