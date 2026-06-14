@@ -11,7 +11,7 @@ const MONITOR_ROUTE: AppRouteRecordRaw = {
   redirect: '/monitor/logs',
   meta: {
     title: '监控',
-    localIcon: 'menu-performance'
+    localIcon: 'menu-performance',
   },
   children: [
     {
@@ -20,7 +20,7 @@ const MONITOR_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/monitor/LogsView.vue'),
       meta: {
         title: '日志',
-        localIcon: 'menu-logs'
+        localIcon: 'menu-logs',
       },
     },
     {
@@ -29,7 +29,7 @@ const MONITOR_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/monitor/UsageView.vue'),
       meta: {
         title: '用量',
-        localIcon: 'menu-usage'
+        localIcon: 'menu-usage',
       },
     },
     {
@@ -38,7 +38,7 @@ const MONITOR_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/monitor/PerformanceView.vue'),
       meta: {
         title: '性能监控',
-        localIcon: 'menu-performance'
+        localIcon: 'menu-performance',
       },
     },
     {
@@ -47,10 +47,10 @@ const MONITOR_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/monitor/SkillsUsageView.vue'),
       meta: {
         title: '技能用量',
-        localIcon: 'menu-skills-usage'
+        localIcon: 'menu-skills-usage',
       },
-    }
-  ]
+    },
+  ],
 }
 
 export default MONITOR_ROUTE

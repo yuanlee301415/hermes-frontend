@@ -11,7 +11,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
   redirect: '/proxy/jobs',
   meta: {
     title: '代理',
-    localIcon: 'menu-models'
+    localIcon: 'menu-models',
   },
   children: [
     {
@@ -20,7 +20,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/JobsView.vue'),
       meta: {
         title: '任务',
-        localIcon: 'menu-jobs'
+        localIcon: 'menu-jobs',
       },
     },
     {
@@ -29,7 +29,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/KanbanView.vue'),
       meta: {
         title: '看板',
-        localIcon: 'menu-kanban'
+        localIcon: 'menu-kanban',
       },
     },
     {
@@ -38,7 +38,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/ChannelsView.vue'),
       meta: {
         title: '频道',
-        localIcon: 'menu-channels'
+        localIcon: 'menu-channels',
       },
     },
     {
@@ -47,7 +47,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/SkillsView.vue'),
       meta: {
         title: '技能',
-        localIcon: 'menu-skills'
+        localIcon: 'menu-skills',
       },
     },
     {
@@ -56,7 +56,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/PluginsView.vue'),
       meta: {
         title: '插件',
-        localIcon: 'menu-plugins'
+        localIcon: 'menu-plugins',
       },
     },
     {
@@ -65,7 +65,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/McpView.vue'),
       meta: {
         title: 'MCP',
-        localIcon: 'menu-mcp'
+        localIcon: 'menu-mcp',
       },
     },
     {
@@ -74,7 +74,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/MemoryView.vue'),
       meta: {
         title: '记忆',
-        localIcon: 'menu-memory'
+        localIcon: 'menu-memory',
       },
     },
     {
@@ -83,9 +83,9 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/proxy/ModelsView.vue'),
       meta: {
         title: '模型',
-        localIcon: 'menu-models'
+        localIcon: 'menu-models',
       },
-    }
+    },
   ],
 }
 

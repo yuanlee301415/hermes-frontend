@@ -1,13 +1,7 @@
-<script setup lang="ts">
-
-</script>
+<script setup lang="ts"></script>
 
 <template>
-  <div class="plugins-view">
-    Plugins
-  </div>
+  <div class="plugins-view">Plugins</div>
 </template>
 
-<style scoped lang="less">
-
-</style>
+<style scoped lang="less"></style>

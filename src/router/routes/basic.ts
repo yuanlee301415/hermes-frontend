@@ -5,7 +5,7 @@ import { LAYOUT, HOME_ROUTE_NAME, PAGE_NOT_FOUND_NAME, EXCEPTION_404 } from '@/r
 export const HOME_ROUTE: AppRouteRecordRaw = {
   path: '/',
   name: HOME_ROUTE_NAME,
-  redirect: '/chat'
+  redirect: '/chat',
 }
 
 export const PAGE_NOT_FOUND_ROUTE: AppRouteRecordRaw = {
@@ -20,4 +20,3 @@ export const PAGE_NOT_FOUND_ROUTE: AppRouteRecordRaw = {
     },
   ],
 }
-

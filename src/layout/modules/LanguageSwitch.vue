@@ -14,16 +14,10 @@ const options = [
   { label: 'Español', value: 'es' },
   { label: 'Deutsch', value: 'de' },
   { label: 'Português', value: 'pt' },
-  { label: 'Русский', value: 'ru' }
+  { label: 'Русский', value: 'ru' },
 ]
-
 </script>
 
 <template>
-  <NSelect
-    :value="locale"
-    :options="options"
-    :consistent-menu-width="false"
-    size="tiny"
-  />
+  <NSelect :value="locale" :options="options" :consistent-menu-width="false" size="tiny" />
 </template>

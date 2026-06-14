@@ -11,7 +11,7 @@ const SYSTEM_ROUTE: AppRouteRecordRaw = {
   redirect: '/system/profiles',
   meta: {
     title: '系统',
-    localIcon: 'menu-settings'
+    localIcon: 'menu-settings',
   },
   children: [
     {
@@ -20,8 +20,8 @@ const SYSTEM_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/system/ProfilesView.vue'),
       meta: {
         title: '用户',
-        localIcon: 'menu-profiles'
-      }
+        localIcon: 'menu-profiles',
+      },
     },
     {
       path: 'settings',
@@ -29,10 +29,10 @@ const SYSTEM_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/system/SettingsView.vue'),
       meta: {
         title: '设置',
-        localIcon: 'menu-settings'
-      }
-    }
-  ]
+        localIcon: 'menu-settings',
+      },
+    },
+  ],
 }
 
 export default SYSTEM_ROUTE

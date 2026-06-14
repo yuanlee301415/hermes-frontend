@@ -1,6 +1,6 @@
 /*
-* App store
-* */
+ * App store
+ * */
 import { defineStore } from 'pinia'
 
 const SIDEBAR_COLLAPSED_KEY = 'hermes_sidebar_collapsed'
@@ -14,6 +14,6 @@ export const useAppStore = defineStore('appStore', () => {
   }
   return {
     sidebarCollapsed,
-    toggleSidebarCollapsed
+    toggleSidebarCollapsed,
   }
 })

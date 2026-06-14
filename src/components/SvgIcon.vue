@@ -15,7 +15,6 @@ const symbolId = computed(() => {
   const icon = props.icon ?? 'no-icon'
   return `#${prefix}-${icon}`
 })
-
 </script>
 
 <template>

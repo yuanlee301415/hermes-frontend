@@ -12,7 +12,6 @@ import { HOME_ROUTE_NAME, LOGIN_ROUTE_NAME } from '@/router/constant'
 import { Menu } from '@/models/Menu.ts'
 import { genMenus } from '../shared'
 
-
 export const useRoutesStore = defineStore('routes', () => {
   const route = useRoute()
 

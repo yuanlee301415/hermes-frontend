@@ -9,13 +9,13 @@ const ABOUT_ROUTE: AppRouteRecordRaw = {
   redirect: '/about',
   component: LAYOUT,
   meta: {
-    title: '关于'
+    title: '关于',
   },
   children: [
     {
       path: '',
       name: ABOUT_ROUTE_NAME + '.About',
-      component: () => import('@/views/About.vue')
+      component: () => import('@/views/About.vue'),
     },
   ],
 }

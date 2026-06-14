@@ -19,7 +19,7 @@ export function setupNaiveDiscreteApi() {
       closable: true,
       duration: 5000,
       placement: 'top-right',
-      keepAliveOnHover: true
+      keepAliveOnHover: true,
     },
   })
 

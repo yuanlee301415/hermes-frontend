@@ -5,15 +5,18 @@
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router'
 
-const props = withDefaults(defineProps<{
-  to: RouteLocationRaw
-  active?: boolean
-  exact?: boolean
-  title?: string
-}>(), {
-  active: undefined,
-  exact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    to: RouteLocationRaw
+    active?: boolean
+    exact?: boolean
+    title?: string
+  }>(),
+  {
+    active: undefined,
+    exact: false,
+  },
+)
 </script>
 
 <template>

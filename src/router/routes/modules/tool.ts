@@ -11,7 +11,7 @@ const TOOL_ROUTE: AppRouteRecordRaw = {
   redirect: '/tool/coding-agents',
   meta: {
     title: '工具',
-    localIcon: 'menu-coding-agents'
+    localIcon: 'menu-coding-agents',
   },
   children: [
     {
@@ -20,8 +20,8 @@ const TOOL_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/tool/CodingAgentsView.vue'),
       meta: {
         title: '编程工具',
-        localIcon: 'menu-coding-agents'
-      }
+        localIcon: 'menu-coding-agents',
+      },
     },
     {
       path: 'version-preview',
@@ -29,10 +29,10 @@ const TOOL_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/tool/VersionPreviewView.vue'),
       meta: {
         title: '版本预览',
-        localIcon: 'menu-version-preview'
-      }
-    }
-  ]
+        localIcon: 'menu-version-preview',
+      },
+    },
+  ],
 }
 
 export default TOOL_ROUTE

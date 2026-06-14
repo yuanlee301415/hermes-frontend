@@ -9,8 +9,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
   redirect: '/chat/chat',
   meta: {
     title: '对话',
-    localIcon: 'menu-chat'
-
+    localIcon: 'menu-chat',
   },
   children: [
     {
@@ -19,8 +18,8 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/chat/ChatView.vue'),
       meta: {
         title: '对话',
-        localIcon: 'menu-chat'
-      }
+        localIcon: 'menu-chat',
+      },
     },
     {
       path: 'history',
@@ -28,8 +27,8 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/chat/HistoryView.vue'),
       meta: {
         title: '历史',
-        localIcon: 'menu-history'
-      }
+        localIcon: 'menu-history',
+      },
     },
     {
       path: 'group-chat',
@@ -37,26 +36,26 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
       component: () => import('@/views/chat/GroupView.vue'),
       meta: {
         title: '群聊(beta)',
-        localIcon: 'menu-group-chat'
-      }
+        localIcon: 'menu-group-chat',
+      },
     },
     {
       path: 'search',
       name: CHAT_ROUTE_NAME + '.Search',
       meta: {
         title: '搜索',
-        localIcon: 'menu-search'
-      }
+        localIcon: 'menu-search',
+      },
     },
     {
       path: 'api-relay',
       name: CHAT_ROUTE_NAME + '.ApiRelay',
       meta: {
         title: '中转站',
-        localIcon: 'menu-api-relay'
-      }
-    }
-  ]
+        localIcon: 'menu-api-relay',
+      },
+    },
+  ],
 }
 
 export default CHAT_ROUTE

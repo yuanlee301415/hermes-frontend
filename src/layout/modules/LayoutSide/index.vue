@@ -4,15 +4,7 @@ Sidebar
 <script setup lang="ts">
 import type { MenuOption } from 'naive-ui'
 import { useRoute } from 'vue-router'
-import {
-  ChevronBack,
-  ChevronForward,
-  ChevronDownSharp,
-  ExitOutline,
-  LogoGithub,
-  GlobeOutline,
-  SunnyOutline
-} from '@vicons/ionicons5'
+import { ChevronBack, ChevronForward, ChevronDownSharp, ExitOutline, LogoGithub, GlobeOutline, SunnyOutline } from '@vicons/ionicons5'
 import { useRoutesStore } from '@/store/modules/routes.ts'
 import { router } from '@/router'
 import { useAppStore } from '@/store/modules/app.ts'
@@ -28,12 +20,16 @@ const appStore = useAppStore()
 const { SvgIconVNode } = useSvgIcon()
 const selectedKey = ref(route.path)
 
-watch(route, (val) => {
-  selectedKey.value = val.path
-}, {
-  immediate: true,
-  deep: true
-})
+watch(
+  route,
+  (val) => {
+    selectedKey.value = val.path
+  },
+  {
+    immediate: true,
+    deep: true,
+  },
+)
 
 function handleRoute(key: string) {
   router.push(key)
@@ -45,14 +41,13 @@ function renderMenuIcon(menu: MenuOption) {
 </script>
 
 <template>
-  <aside :class="{collapsed: appStore.sidebarCollapsed}" class="sidebar">
-    <route-link-item :to="{name: 'Home'}" class="sidebar-logo">
+  <aside :class="{ collapsed: appStore.sidebarCollapsed }" class="sidebar">
+    <route-link-item :to="{ name: 'Home' }" class="sidebar-logo">
       <img src="@/assets/logo.png" width="28" />
       <h1 v-show="!appStore.sidebarCollapsed" class="sidebar-title">{{ TITLE }}</h1>
     </route-link-item>
 
-    <n-button :title="appStore.sidebarCollapsed ? '展开菜单' : '收起菜单'" quaternary size="small"
-              class="sidebar-collapse-btn" @click="appStore.toggleSidebarCollapsed()">
+    <n-button :title="appStore.sidebarCollapsed ? '展开菜单' : '收起菜单'" quaternary size="small" class="sidebar-collapse-btn" @click="appStore.toggleSidebarCollapsed()">
       <template #icon>
         <n-icon>
           <ChevronForward v-if="appStore.sidebarCollapsed" />
@@ -64,7 +59,7 @@ function renderMenuIcon(menu: MenuOption) {
     <nav class="sidebar-nav">
       <n-menu
         v-model:value="selectedKey"
-        :options="routesStore.menus as unknown as  MenuOption[]"
+        :options="routesStore.menus as unknown as MenuOption[]"
         :default-expand-all="true"
         :root-indent="15"
         :indent="15"
@@ -112,16 +107,10 @@ function renderMenuIcon(menu: MenuOption) {
           <span class="status-dot"></span>
           <n-text v-show="!appStore.sidebarCollapsed" class="status-text">已连接</n-text>
         </n-flex>
-        <LanguageSwitch v-show="!appStore.sidebarCollapsed" style="width: 90px;" />
+        <LanguageSwitch v-show="!appStore.sidebarCollapsed" style="width: 90px" />
       </n-flex>
 
-      <n-flex
-        :vertical="appStore.sidebarCollapsed"
-        :size="appStore.sidebarCollapsed ? 20 : 10"
-        class="version"
-        align="center"
-        justify="space-between"
-      >
+      <n-flex :vertical="appStore.sidebarCollapsed" :size="appStore.sidebarCollapsed ? 20 : 10" class="version" align="center" justify="space-between">
         <n-button v-show="!appStore.sidebarCollapsed" text size="small">
           <template #icon>
             <n-icon>
@@ -155,7 +144,6 @@ function renderMenuIcon(menu: MenuOption) {
             </n-icon>
           </template>
         </n-button>
-
       </n-flex>
     </div>
   </aside>

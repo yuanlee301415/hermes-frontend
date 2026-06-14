@@ -1,13 +1,13 @@
 <template>
   <div>
     <h1>TestA.</h1>
-    <hr>
+    <hr />
     <n-button @click="testMessage">Test A</n-button>
-    <hr>
+    <hr />
     <n-flex>
-      <SvgIcon icon="HomeOutline" :size="50"/>
+      <SvgIcon icon="HomeOutline" :size="50" />
       <span style="color: green">
-        <SvgIcon icon="HomeOutline" :size="50"/>
+        <SvgIcon icon="HomeOutline" :size="50" />
       </span>
     </n-flex>
   </div>
