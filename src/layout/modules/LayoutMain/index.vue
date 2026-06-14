@@ -1,3 +1,10 @@
+<!--
+LayoutMain
+-->
+<script setup lang="ts">
+defineOptions({ name: 'LayoutMain' })
+</script>
+
 <template>
   <main>
     <RouterView v-slot="{ Component, route }">
@@ -8,15 +15,12 @@
   </main>
 </template>
 
-<script setup lang="ts">
-defineOptions({ name: 'LayoutMain' })
-</script>
-
 <style lang="less">
 main {
+  height: 100%;
+  flex: 1;
   background-color: var(--bg-primary);
   padding: 10px;
-  height: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 </style>
