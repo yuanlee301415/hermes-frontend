@@ -9,16 +9,16 @@ export class Menu {
 
   title: string
 
-  icon?: string
+  localIcon?: string
 
-  children?: Menu[]|void
+  children?: Menu[] | void
 
   constructor(_: Menu) {
-    const { path, name, title, icon, children } = { ..._ }
+    const { path, name, title, localIcon, children } = { ..._ }
     this.path = path
     this.name = name
     this.title = title
-    this.icon = icon
+    this.localIcon = localIcon
     this.children = children
   }
 }

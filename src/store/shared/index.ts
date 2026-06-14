@@ -1,5 +1,4 @@
 import type { AppRouteRecordRaw } from '@/router/types'
-
 import { Menu } from '@/models/Menu.ts'
 
 /**
@@ -13,7 +12,7 @@ export function genMenus(routes: AppRouteRecordRaw[], path = '', result: Menu[] 
     const menu = new Menu({
       path: path ? path + '/' + route.path : route.path,
       name: route.name!,
-      icon: route.meta.icon,
+      localIcon: route.meta.localIcon,
       title: route.meta.title,
     })
 
