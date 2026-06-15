@@ -4,6 +4,8 @@
 ```bash
 chore: Forked from [vue3-ts-template@v1.3.1]
 ```
+## 参考：[hermes-studio@v0.6.14(2026/6/12)](https://github.com/EKKOLearnAI/hermes-studio/releases/tag/v0.6.14)
+
 ## Project Setup
 
 ```sh
