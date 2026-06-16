@@ -1,4 +1,4 @@
-import type { UserConfig, ConfigEnv } from "vite";
+import type { UserConfig, ConfigEnv, ProxyOptions } from "vite";
 
 import { fileURLToPath, URL } from "node:url";
 import { cwd } from 'node:process'
@@ -14,8 +14,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   const {
     VITE_PORT,
     VITE_INTERNAL_VERSION,
-    VITE_PERMISSION,
-    VITE_BASE_API,
     VITE_PROXY,
     VITE_ICON_LOCAL_PREFIX
   } = env;
@@ -39,16 +37,18 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     },
     server: {
       port: Number(VITE_PORT),
-      proxy:
-        VITE_PERMISSION && JSON.parse(VITE_PERMISSION)
-          ? {
-              [VITE_BASE_API]: {
-                target: VITE_PROXY,
-                changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/api\//, "/api/v1/"),
-              },
-            }
-          : undefined,
+      strictPort: true,
+      proxy: {
+        '/api': createProxyConfig(VITE_PROXY),
+        '/v1': createProxyConfig(VITE_PROXY),
+        '/health': createProxyConfig(VITE_PROXY),
+        '/upload': createProxyConfig(VITE_PROXY),
+        '/webhook': createProxyConfig(VITE_PROXY),
+        '/socket.io': {
+          target: VITE_PROXY,
+          ws: true
+        }
+      }
     },
     define: {
       __APP_VERSION__: JSON.stringify(__APP_VERSION__),
@@ -72,5 +72,27 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         }
       }
     }
-  };
-});
+  }
+})
+
+function createProxyConfig(target: string): ProxyOptions {
+  return {
+    target,
+    changeOrigin: true,
+    ws: true,
+    configure: (proxy) => {
+      proxy.on('proxyReq', (proxyReq) => {
+        proxyReq.removeHeader('origin')
+        proxyReq.removeHeader('referer')
+      })
+      proxy.on('proxyReqWs', (proxyReq) => {
+        proxyReq.removeHeader('origin')
+        proxyReq.removeHeader('referer')
+      })
+      proxy.on('proxyRes', (proxyRes) => {
+        proxyRes.headers['cache-control'] = 'no-cache'
+        proxyRes.headers['x-accel-buffering'] = 'no'
+      })
+    }
+  }
+}
