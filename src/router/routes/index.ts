@@ -1,4 +1,4 @@
-import { HOME_ROUTE, PAGE_NOT_FOUND_ROUTE } from '@/router/routes/basic'
+import { HOME_ROUTE, PAGE_NOT_FOUND_ROUTE, LOGIN_ROUTE } from '@/router/routes/basic'
 import CHAT_ROUTE from '@/router/routes/modules/chat.ts'
 import PROXY_ROUTE from '@/router/routes/modules/proxy.ts'
 import MONITOR_ROUTE from '@/router/routes/modules/monitor.ts'
@@ -9,6 +9,7 @@ import TEST_ROUTE from '@/router/routes/modules/test'
 // import NESTED_ROUTE from "@/router/routes/modules/nested";
 
 export const basicRoutes = [
+  LOGIN_ROUTE,
   HOME_ROUTE,
   CHAT_ROUTE,
   PROXY_ROUTE,

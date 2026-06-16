@@ -1,13 +1,20 @@
 import type { Router } from 'vue-router'
-
-import { useUserStoreWithOut } from '@/store/modules/user'
+import { hasApiKey } from '@/api/request.ts'
+import { LOGIN_ROUTE_NAME, CHAT_ROUTE_NAME } from '../constant.ts'
 
 export function createPermissionGuard(router: Router) {
-  const userStore = useUserStoreWithOut()
-  router.beforeEach(async () => {
-    if (!userStore.info) {
-      await userStore.getUserInfo()
+  router.beforeEach(async (to) => {
+    if (to.meta.public) {
+      if (to.name === LOGIN_ROUTE_NAME && hasApiKey()) {
+        return { name: CHAT_ROUTE_NAME}
+      }
+      return true
     }
+
+    if (!hasApiKey()) {
+      return { name: LOGIN_ROUTE_NAME }
+    }
+
     return true
   })
 }

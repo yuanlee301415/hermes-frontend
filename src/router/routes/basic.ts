@@ -1,6 +1,6 @@
 import type { AppRouteRecordRaw } from '@/router/types'
 
-import { LAYOUT, HOME_ROUTE_NAME, PAGE_NOT_FOUND_NAME, EXCEPTION_404 } from '@/router/constant'
+import { LAYOUT, HOME_ROUTE_NAME, PAGE_NOT_FOUND_NAME, EXCEPTION_404, LOGIN_ROUTE_NAME } from '@/router/constant'
 
 export const HOME_ROUTE: AppRouteRecordRaw = {
   path: '/',
@@ -19,4 +19,13 @@ export const PAGE_NOT_FOUND_ROUTE: AppRouteRecordRaw = {
       component: EXCEPTION_404,
     },
   ],
+}
+
+export const LOGIN_ROUTE: AppRouteRecordRaw = {
+  path: '/login',
+  name: LOGIN_ROUTE_NAME,
+  meta: {
+    public: true
+  },
+  component: () => import('@/views/LoginView.vue')
 }
