@@ -3,7 +3,7 @@
  * */
 
 import { useSvgIconRender } from './svgIconRender'
-import SvgIcon from '@/components/SvgIcon.vue'
+import SvgIcon from '@/components/common/SvgIcon.vue'
 
 export function useSvgIcon() {
   const { SvgIconVNode } = useSvgIconRender(SvgIcon)
