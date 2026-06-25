@@ -50,6 +50,19 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         }
       }
     },
+    preview: {
+      proxy: {
+        '/api': createProxyConfig(VITE_PROXY),
+        '/v1': createProxyConfig(VITE_PROXY),
+        '/health': createProxyConfig(VITE_PROXY),
+        '/upload': createProxyConfig(VITE_PROXY),
+        '/webhook': createProxyConfig(VITE_PROXY),
+        '/socket.io': {
+          target: VITE_PROXY,
+          ws: true
+        }
+      }
+    },
     define: {
       __APP_VERSION__: JSON.stringify(__APP_VERSION__),
       __APP_BUILD_TIME__: JSON.stringify(__APP_BUILD_TIME__),
