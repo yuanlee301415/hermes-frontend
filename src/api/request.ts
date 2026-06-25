@@ -3,8 +3,12 @@ const API_KEY = 'hermes-api-key'
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${DEFAULT_BASE_URL}${path}`
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json'
+  }
+  const apiKey = getApiKey()
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`
   }
   const res = await fetch(url, { ...options, headers })
   if (!res.ok) {

@@ -20,7 +20,6 @@ main {
   height: 100%;
   flex: 1;
   background-color: var(--bg-primary);
-  padding: 10px;
   overflow: hidden;
 }
 </style>
