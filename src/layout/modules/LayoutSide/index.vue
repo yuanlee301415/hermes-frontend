@@ -10,6 +10,7 @@ import { router } from '@/router'
 import { useAppStore } from '@/store/modules/app.ts'
 import LanguageSwitch from '@/layout/modules/LanguageSwitch.vue'
 import { useSvgIcon } from '@/hooks/svgIcon.ts'
+import { useProfilesStore } from '@/store/modules/profiles.ts'
 
 defineOptions({ name: 'LayoutSide' })
 
@@ -17,6 +18,7 @@ const TITLE = import.meta.env.VITE_APP_TITLE
 const route = useRoute()
 const routesStore = useRoutesStore()
 const appStore = useAppStore()
+const profilesStore = useProfilesStore()
 const { SvgIconVNode } = useSvgIcon()
 const selectedKey = ref(route.path)
 
@@ -78,7 +80,7 @@ function renderMenuIcon(menu: MenuOption) {
         <template #icon>
           <SvgIcon icon="Profile" :size="24" />
         </template>
-        <n-text v-show="!appStore.sidebarCollapsed">default</n-text>
+        <n-text v-show="!appStore.sidebarCollapsed">{{ profilesStore.activeProfileName }}</n-text>
       </n-button>
     </div>
 

@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import ChatPanel from '@/components/hermes/chat/ChatPanel.vue'
+
 import { useChatStore } from '@/store/modules/chat.ts'
+import { useProfilesStore } from '@/store/modules/profiles.ts'
 
 const chatStore = useChatStore()
+const profileStore = useProfilesStore()
 
-void getSessions()
+onMounted(async () => {
+  await Promise.all([
+    profileStore.fetchProfiles(),
+  ])
+  await loadRouteSession()
+})
 
-async function getSessions() {
+async function loadRouteSession() {
   await chatStore.loadSessions()
-  console.log(chatStore.sessions)
 }
+
 </script>
 
 <template>
