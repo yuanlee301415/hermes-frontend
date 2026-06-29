@@ -8,10 +8,19 @@ import type { Session } from '@/models/Session.ts'
 const props = defineProps<{
   session: Session
 }>()
+
+
+function handleClick() {
+
+}
+
 </script>
 
 <template>
-  <a class="session-item flex-row">
+  <a
+    class="session-item flex-row"
+    @click="handleClick"
+  >
     <div class="session-item-content flex-1">
       <n-text strong class="session-title">
         <n-ellipsis>{{ session.title }}</n-ellipsis>

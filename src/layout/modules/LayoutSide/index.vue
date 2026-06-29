@@ -11,6 +11,7 @@ import { useAppStore } from '@/store/modules/app.ts'
 import LanguageSwitch from '@/layout/modules/LanguageSwitch.vue'
 import { useSvgIcon } from '@/hooks/svgIcon.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
+import { SESSION_ROUTE_NAME, CHAT_ROUTE_PATH } from '@/router/routes/modules/chat.ts'
 
 defineOptions({ name: 'LayoutSide' })
 
@@ -25,7 +26,7 @@ const selectedKey = ref(route.path)
 watch(
   route,
   (val) => {
-    selectedKey.value = val.path
+    selectedKey.value = val.name === SESSION_ROUTE_NAME ?  CHAT_ROUTE_PATH : val.path
   },
   {
     immediate: true,

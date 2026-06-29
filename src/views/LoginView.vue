@@ -9,7 +9,7 @@ const TITLE = import.meta.env.VITE_APP_TITLE
 import { useRouter } from 'vue-router'
 import { setApiKey } from '@/api/request.ts'
 import { loginWithPassword } from '@/api/auth.ts'
-import { CHAT_ROUTE_NAME } from '@/router/constant.ts'
+import { CHAT_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 
 const router = useRouter()
 const username = ref('admin')

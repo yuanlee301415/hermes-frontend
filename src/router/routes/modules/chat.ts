@@ -1,12 +1,18 @@
 import type { AppRouteRecordRaw } from '@/router/types'
 
-import { LAYOUT, CHAT_ROUTE_NAME } from '@/router/constant'
+import { LAYOUT } from '@/router/constant'
+
+const CHAT_ROOT_NAME = 'Chat'
+
+export const CHAT_ROUTE_NAME = CHAT_ROOT_NAME + '.Chat'
+export const SESSION_ROUTE_NAME = CHAT_ROOT_NAME + '.Session'
+export const CHAT_ROUTE_PATH = '/chat/chat'
 
 const CHAT_ROUTE: AppRouteRecordRaw = {
   path: '/chat',
-  name: CHAT_ROUTE_NAME,
+  name: 'Chat',
   component: LAYOUT,
-  redirect: '/chat/chat',
+  redirect: CHAT_ROUTE_PATH,
   meta: {
     title: '对话',
     localIcon: 'menu-chat',
@@ -14,7 +20,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
   children: [
     {
       path: 'chat',
-      name: CHAT_ROUTE_NAME + '.Chat',
+      name: CHAT_ROUTE_NAME,
       component: () => import('@/views/chat/ChatView.vue'),
       meta: {
         title: '对话',
@@ -22,8 +28,14 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
       },
     },
     {
+      path: 'session/:session',
+      name: SESSION_ROUTE_NAME,
+      component: () => import('@/views/chat/ChatView.vue'),
+      meta: {},
+    },
+    {
       path: 'history',
-      name: CHAT_ROUTE_NAME + '.History',
+      name: CHAT_ROOT_NAME + '.History',
       component: () => import('@/views/chat/HistoryView.vue'),
       meta: {
         title: '历史',
@@ -32,7 +44,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
     },
     {
       path: 'group-chat',
-      name: CHAT_ROUTE_NAME + '.GroupChat',
+      name: CHAT_ROOT_NAME + '.GroupChat',
       component: () => import('@/views/chat/GroupView.vue'),
       meta: {
         title: '群聊(beta)',
@@ -41,7 +53,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
     },
     {
       path: 'search',
-      name: CHAT_ROUTE_NAME + '.Search',
+      name: CHAT_ROOT_NAME + '.Search',
       meta: {
         title: '搜索',
         localIcon: 'menu-search',
@@ -49,7 +61,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
     },
     {
       path: 'api-relay',
-      name: CHAT_ROUTE_NAME + '.ApiRelay',
+      name: CHAT_ROOT_NAME + '.ApiRelay',
       meta: {
         title: '中转站',
         localIcon: 'menu-api-relay',
