@@ -7,11 +7,16 @@ import type { Session } from '@/models/Session.ts'
 
 const props = defineProps<{
   session: Session
+  to?: string
 }>()
 
+const emit = defineEmits<{
+  (e: 'select'): void
+}>()
 
-function handleClick() {
-
+function handleClick(event: MouseEvent) {
+  if (props.to) event?.preventDefault()
+  emit('select')
 }
 
 </script>

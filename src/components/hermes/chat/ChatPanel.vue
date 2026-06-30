@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { SelectOption } from 'naive-ui'
 import { CheckboxOutline, AddOutline, GridOutline, MenuOutline, CopyOutline } from '@vicons/ionicons5'
+import { useRouter } from 'vue-router'
 import { useChatStore } from '@/store/modules/chat.ts'
+import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 import SessionListItem from './SessionListItem.vue'
 
 const profileOptions: SelectOption[] = [
@@ -15,10 +17,21 @@ const profileOptions: SelectOption[] = [
   }
 ]
 
+const router = useRouter()
 const chatStore = useChatStore()
 const profileFilterValue = ref('')
 const showSessions = ref(true)
 
+
+async function handleSessionClick(sessionId: string) {
+  console.log(sessionId)
+  await router.push({
+    name: SESSION_ROUTE_NAME,
+    params: {
+      sessionId
+    }
+  })
+}
 </script>
 
 <template>
@@ -57,6 +70,7 @@ const showSessions = ref(true)
           v-for="session of chatStore.sessions"
           :key="session.id"
           :session="session"
+          @select="handleSessionClick(session.id)"
         />
       </div>
     </aside>

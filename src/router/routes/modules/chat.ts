@@ -28,7 +28,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
       },
     },
     {
-      path: 'session/:session',
+      path: 'session/:sessionId',
       name: SESSION_ROUTE_NAME,
       component: () => import('@/views/chat/ChatView.vue'),
       meta: {},
