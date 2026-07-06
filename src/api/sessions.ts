@@ -1,4 +1,4 @@
-import { request } from './request.ts'
+import { request } from './client.ts'
 
 export interface SessionSummary {
   id: string

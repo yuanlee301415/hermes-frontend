@@ -1,4 +1,4 @@
-import { request } from './request.ts'
+import { request } from './client.ts'
 
 export async function loginWithPassword(username: string, password: string): Promise<{ token: string }> {
   return request('api/auth/login', {

@@ -1,6 +1,5 @@
-import { request } from './request.ts'
+import { request } from './client.ts'
 import { Profile } from '@/models/Profile.ts'
-
 
 export async function getProfilesApi(): Promise<Profile[]> {
   const res = await request<{profiles: Profile[]}>('api/hermes/profiles', {

@@ -1,5 +1,5 @@
 import type { Router } from 'vue-router'
-import { hasApiKey } from '@/api/request.ts'
+import { hasApiKey } from '@/api/client.ts'
 import { LOGIN_ROUTE_NAME } from '../constant.ts'
 import { CHAT_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 

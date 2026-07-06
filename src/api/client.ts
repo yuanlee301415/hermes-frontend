@@ -1,5 +1,26 @@
-const DEFAULT_BASE_URL = '/'
+const DEFAULT_BASE_URL = './'
 const API_KEY = 'hermes-api-key'
+
+function getBaseUrl() {
+  return DEFAULT_BASE_URL
+}
+
+export function getBaseUrlValue(): string {
+  return getBaseUrl()
+}
+
+
+export function setApiKey(key: string) {
+  localStorage.setItem(API_KEY, key)
+}
+
+export function getApiKey(): string {
+  return localStorage.getItem(API_KEY) ?? ''
+}
+
+export function hasApiKey() {
+  return !!getApiKey()
+}
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${DEFAULT_BASE_URL}${path}`
@@ -17,16 +38,4 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     throw new Error(`API Error ${res.status}:${text} (${res.statusText})`)
   }
   return res.json()
-}
-
-export function setApiKey(key: string) {
-  localStorage.setItem(API_KEY, key)
-}
-
-export function getApiKey(): string {
-  return localStorage.getItem(API_KEY) ?? ''
-}
-
-export function hasApiKey() {
-  return !!getApiKey()
 }
