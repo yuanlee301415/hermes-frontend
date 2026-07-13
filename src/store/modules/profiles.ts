@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { Profile } from '@/models/Profile.ts'
-
 import { getProfilesApi } from '@/api/profiles.ts'
 
 const ACTIVE_PROFILE_STORAGE_KEY = 'hermes_active_profile_name'

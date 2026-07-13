@@ -7,6 +7,7 @@ import type { Session } from '@/models/Session.ts'
 
 const props = defineProps<{
   session: Session
+  active: boolean
   to?: string
 }>()
 
@@ -23,6 +24,7 @@ function handleClick(event: MouseEvent) {
 
 <template>
   <a
+    :class="{active}"
     class="session-item flex-row"
     @click="handleClick"
   >

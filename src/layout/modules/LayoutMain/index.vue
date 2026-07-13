@@ -9,7 +9,7 @@ defineOptions({ name: 'LayoutMain' })
   <main>
     <RouterView v-slot="{ Component, route }">
       <transition name="fade-slide" mode="out-in">
-        <component :is="Component" :key="route.fullPath" />
+        <component :is="Component" :key="route.name" />
       </transition>
     </RouterView>
   </main>

@@ -22,9 +22,10 @@ const chatStore = useChatStore()
 const profileFilterValue = ref('')
 const showSessions = ref(true)
 
+const activeSessionTitle = computed(() => chatStore.activeSession?.title ?? '新对话')
 
 async function handleSessionClick(sessionId: string) {
-  console.log(sessionId)
+  console.log('handleSessionClick:', { sessionId })
   await router.push({
     name: SESSION_ROUTE_NAME,
     params: {
@@ -70,6 +71,7 @@ async function handleSessionClick(sessionId: string) {
           v-for="session of chatStore.sessions"
           :key="session.id"
           :session="session"
+          :active="session.id === chatStore.activeSessionId"
           @select="handleSessionClick(session.id)"
         />
       </div>
@@ -87,7 +89,7 @@ async function handleSessionClick(sessionId: string) {
               <n-icon size="small"><GridOutline/></n-icon>
             </template>
           </n-button>
-          <h3 class="header-title">test</h3>
+          <h3 class="header-title">{{ activeSessionTitle }}</h3>
         </n-flex>
         <n-flex class="header-actions" align="center">
           <n-button quaternary circle size="small" title="会话大纲">
@@ -115,14 +117,14 @@ async function handleSessionClick(sessionId: string) {
       <!--============ >>>[Chat content] ============-->
       <div class="chat-content-wrapper">
         <div class="chat-main-content">
-          chat-main-content
+          <pre>{{chatStore.activeSession}}</pre>
         </div>
       </div>
       <!--============ [Chat content]<<< ============-->
 
       <!--============ >>>[Chat input] ============-->
       <div class="chat-input-area">
-        chat-input-area
+        <n-input type="textarea"/>
       </div>
       <!--============ [Chat input]<<< ============-->
 
