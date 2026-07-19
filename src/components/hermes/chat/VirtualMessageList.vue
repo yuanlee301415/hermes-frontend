@@ -7,10 +7,8 @@ defineProps<{ messages: Message[] }>()
 <template>
   <div class="virtual-message-list-host" style="--virtual-list-padding: 20px;--virtual-row-gap: 16px;">
     <div class="virtual-message-list">
-      <div class="virtual-row">
-        <template v-for="(item, idx) of messages" :key="item.id">
-          <slot :item="item" :idx="idx"></slot>
-        </template>
+      <div v-for="(item, idx) of messages" :key="item.id" class="virtual-row">
+        <slot :item="item" :idx="idx"></slot>
       </div>
     </div>
   </div>
@@ -31,6 +29,7 @@ defineProps<{ messages: Message[] }>()
     min-width: 0;
     max-width: 100%;
     padding: var(--virtual-list-padding);
+    overflow-y: auto;
     .virtual-row {
       min-width: 0;
       max-width: 100%;

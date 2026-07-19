@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { CopyOutline } from '@vicons/ionicons5'
 import { Message } from '@/models/Session.ts'
 import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
+import { formatTime } from '@/utils/formatTime.ts'
 import MarkdownRender from './MarkdownRender.vue'
 import { parseThinking } from '@/utils/thinking-parser.ts'
-import { parseContentBlocks, getBlockText } from './shared.ts'
+import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
 
 const props = defineProps<{message: Message, highlight?: boolean, headingIdPrefix?: string}>()
 
@@ -42,12 +44,25 @@ const parsedThinking = computed(() => parseThinking(props.message.content ?? '',
 // 判断消息是否包含思考内容（reasoning 字段或 <think> 标签任一存在即可）
 const hasThinking = computed(() => props.message.hasReasoningField || parsedThinking.value.hasThinking)
 
+// ========== 复制功能相关 ==========
+// 可复制的消息内容：
+// - 工具调用消息（role 为 tool）不支持复制
+// - 空内容不支持复制
+// - 其他消息类型返回原始内容
+const copyableContent = computed(() => {
+  if (props.message.role === Message.ROLE_TOOL) return null
+  const content = props.message.content ?? ''
+  if (!content.trim()) return null
+  return content
+})
+
 </script>
 
 <template>
   <div class="message" :class="[message.role, {highlight}]" :id="`message-${message.id}`">
     <!-- ================================ >>>[工具] ================================ -->
     <div v-if="message.role === Message.ROLE_TOOL" class="msg-tool">
+      <!--Todo: 工具-->
       <div class="tool-line"></div>
       <div class="tool-details"></div>
     </div>
@@ -72,27 +87,30 @@ const hasThinking = computed(() => props.message.hasReasoningField || parsedThin
 
             <!-- ======================== >>>[附件] ======================== -->
             <div v-if="message.hasAttachments" class="msg-attachments">
-              <pre>msg-attachments</pre>
+              <!--Todo: 附件-->
             </div>
             <!-- ======================== [附件]<<< ======================== -->
 
             <!-- ======================== >>>[思考内容] ======================== -->
-            <div v-if="hasThinking" class="thinking-block">
-              <pre>thinking-block</pre>
-            </div>
+            <div class="msg-thinking">
+              <!--Todo: 思考内容-->
+              <div v-if="hasThinking" class="thinking-block"></div>
 
-            <MarkdownRender
-              v-if="parsedThinking.body && message.role === Message.ROLE_ASSISTANT"
-              :content="message.content"
-              :heading-id-prefix="headingIdPrefix"
-            />
+              <MarkdownRender
+                v-if="parsedThinking.body && message.role === Message.ROLE_ASSISTANT"
+                :content="message.content"
+                :heading-id-prefix="headingIdPrefix"
+              />
+            </div>
             <!-- ======================== [思考内容]<<< ======================== -->
 
             <!-- ======================== >>>[用户消息] ======================== -->
             <template v-if="message.role === Message.ROLE_USER">
               <template v-if="isContentBlockArray">
                 <!-- 用户消息中的文件附件（图片或普通文件） -->
-                <div class="msg-attachments"></div>
+                <div class="msg-attachments">
+                  <!--Todo: 用户消息中的文件附件-->
+                </div>
 
                 <!-- 用户消息文本内容 -->
                 <MarkdownRender v-if="displayText" :content="displayText"/>
@@ -100,7 +118,6 @@ const hasThinking = computed(() => props.message.hasReasoningField || parsedThin
 
               <!-- 纯文本格式（普通用户消息） -->
               <MarkdownRender v-else-if="message.content" :content="message.content"/>
-
             </template>
             <!-- ======================== [用户消息]<<< ======================== -->
 
@@ -126,12 +143,12 @@ const hasThinking = computed(() => props.message.hasReasoningField || parsedThin
             <!-- ======================== >>>[命令消息] ======================== -->
             <!-- 状态命令：显示键值对 -->
             <div v-if="message.isStatusCommand" class="command-result command-status">
-              <pre>command-status</pre>
+              <!--Todo: 状态命令-->
             </div>
 
             <!-- 普通命令：显示命令执行结果 -->
             <div v-if="message.isCommandMessage" class="command-result">
-              <pre>command-result</pre>
+              <!--Todo: 普通命令-->
             </div>
             <!-- ======================== [命令消息]<<< ======================== -->
 
@@ -143,7 +160,14 @@ const hasThinking = computed(() => props.message.hasReasoningField || parsedThin
           <!-- ============================ [消息气泡]<<< ============================ -->
 
           <!-- ============================ >>>[消息操作栏（语音播放/复制/时间）] ============================ -->
-          <div class="msg-meta"></div>
+          <div class="msg-meta">
+            <n-button v-if="copyableContent" quaternary size="tiny" title="复制消息">
+              <template #icon>
+                <n-icon><CopyOutline/></n-icon>
+              </template>
+            </n-button>
+            <time class="msg-time" :title="formatTime(message.timestamp)">{{ formatTime(message.timestamp, {time: true}) }}</time>
+          </div>
           <!-- ============================ [消息操作栏（语音播放/复制/时间）]<<< ============================ -->
 
         </div>

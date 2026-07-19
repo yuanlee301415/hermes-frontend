@@ -1,3 +1,6 @@
+/*
+* 消息解析
+* */
 import type { ContentBlock } from '@/api/chat.ts'
 
 /**
@@ -57,3 +60,4 @@ export function getBlockText(block: any): string {
   }
   return ''
 }
+
