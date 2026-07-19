@@ -62,6 +62,14 @@ export interface ResumeSessionPayload {
   queueMessages?: RunEvent['queued_messages']
 }
 
+/**
+ * 内容块类型联合，支持文本、图片和文件三种类型
+ */
+export type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; name: string; path: string; media_type: string }
+  | { type: 'file'; name: string; path: string; media_type: string }
+
 const DEFAULT_PROFILE_NAME = 'default'
 
 /** 当前的聊天运行 Socket 连接实例 */

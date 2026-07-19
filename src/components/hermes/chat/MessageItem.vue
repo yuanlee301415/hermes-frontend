@@ -2,12 +2,46 @@
 import { Message } from '@/models/Session.ts'
 import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
 import MarkdownRender from './MarkdownRender.vue'
+import { parseThinking } from '@/utils/thinking-parser.ts'
+import { parseContentBlocks, getBlockText } from './shared.ts'
 
-const props = defineProps<{message: Message, highlight?: boolean}>()
+const props = defineProps<{message: Message, highlight?: boolean, headingIdPrefix?: string}>()
 
-onMounted(() => {
-  console.log(props.message)
+// ========== 内容块解析计算属性 ==========
+// 从消息内容字符串中解析 ContentBlock[] 数组
+// 如果消息内容是标准 JSON 或遗留 Python 格式，返回解析后的数组；否则返回 null
+const contentBlocks = computed(() => parseContentBlocks(props.message.content ?? ''))
+
+// 判断消息内容是否为 ContentBlock[] 格式（多模态格式）
+// 用于区分普通文本消息和多模态消息（包含图片、文件等）
+const isContentBlockArray = computed(() => contentBlocks.value !== null)
+
+// 从 ContentBlock[] 中提取纯文本内容用于显示
+// 对于普通文本消息，直接返回原始内容；对于多模态消息，提取所有文本块并拼接
+const displayText = computed(() => {
+  // 如果不是 ContentBlock[] 格式（普通文本消息），直接返回原始内容
+  if (!isContentBlockArray.value) {
+    return props.message.content ?? ''
+  }
+
+  // 遍历所有内容块，提取文本并拼接
+  return contentBlocks.value!.map(block => getBlockText(block)).filter(Boolean).join('\n')
 })
+
+// ========== 消息类型判断计算属性 ==========
+// 有效标题 ID 前缀：优先使用传入的 headingIdPrefix，否则使用消息 ID 作为前缀
+// 用于 Markdown 渲染时为标题生成唯一 ID，支持锚点跳转
+const effectiveHeadingIdPrefix = computed(() => props.headingIdPrefix ?? `msg-${props.message.id}`)
+
+
+// ========== 思考内容（Reasoning）相关 ==========
+// 解析消息内容中的思考文本（<think> 标签）
+// 支持流式传输模式：当 isStreaming 为 true 时，允许未闭合的 <think> 标签
+const parsedThinking = computed(() => parseThinking(props.message.content ?? '', { streaming: !!props.message.isStreaming }))
+
+// 判断消息是否包含思考内容（reasoning 字段或 <think> 标签任一存在即可）
+const hasThinking = computed(() => props.message.hasReasoningField || parsedThinking.value.hasThinking)
+
 </script>
 
 <template>
@@ -26,43 +60,79 @@ onMounted(() => {
 
         <div class="msg-content" :class="message.role">
           <!-- ============================ >>>[消息气泡] ============================ -->
-          <div class="msg-bubble">
+          <div
+            class="msg-bubble"
+            :class="{
+            system: message.role === Message.ROLE_SYSTEM,
+            'agent-error': message.isAgentError,
+            command: message.isCommandMessage,
+            'command-error': message.isCommandError
+          }"
+          >
 
             <!-- ======================== >>>[附件] ======================== -->
-            <div class="msg-attachments"></div>
+            <div v-if="message.hasAttachments" class="msg-attachments">
+              <pre>msg-attachments</pre>
+            </div>
             <!-- ======================== [附件]<<< ======================== -->
 
             <!-- ======================== >>>[思考内容] ======================== -->
-            <div class="thinking-block"></div>
+            <div v-if="hasThinking" class="thinking-block">
+              <pre>thinking-block</pre>
+            </div>
 
-            <!-- 解析后的思考内容（直接显示） -->
-            <!-- 当思考内容在助手消息中且不需要单独展开时，直接渲染 -->
-            <MarkdownRender/>
+            <MarkdownRender
+              v-if="parsedThinking.body && message.role === Message.ROLE_ASSISTANT"
+              :content="message.content"
+              :heading-id-prefix="headingIdPrefix"
+            />
             <!-- ======================== [思考内容]<<< ======================== -->
 
             <!-- ======================== >>>[用户消息] ======================== -->
             <template v-if="message.role === Message.ROLE_USER">
-              <MarkdownRender :content="message.content"/>
+              <template v-if="isContentBlockArray">
+                <!-- 用户消息中的文件附件（图片或普通文件） -->
+                <div class="msg-attachments"></div>
+
+                <!-- 用户消息文本内容 -->
+                <MarkdownRender v-if="displayText" :content="displayText"/>
+              </template>
+
+              <!-- 纯文本格式（普通用户消息） -->
+              <MarkdownRender v-else-if="message.content" :content="message.content"/>
+
             </template>
             <!-- ======================== [用户消息]<<< ======================== -->
 
+
             <!-- ======================== >>>[AI 消息] ======================== -->
             <template v-if="message.role === Message.ROLE_ASSISTANT">
-              <MarkdownRender :content="message.content"/>
+              <MarkdownRender
+                v-if="message.content && !parsedThinking.body"
+                :content="message.content"
+                :heading-id-prefix="effectiveHeadingIdPrefix"
+              />
             </template>
             <!-- ======================== [AI 消息]<<< ======================== -->
 
 
             <!-- ======================== >>>[系统消息] ======================== -->
-            <MarkdownRender v-if="message.role === Message.ROLE_SYSTEM"></MarkdownRender>
+            <template v-if="message.role === Message.ROLE_SYSTEM">
+              <MarkdownRender v-if="message.isCommandMessage" :content="message.content"/>
+            </template>
             <!-- ======================== [系统消息]<<< ======================== -->
+
 
             <!-- ======================== >>>[命令消息] ======================== -->
             <!-- 状态命令：显示键值对 -->
-            <div class="command-result command-status"></div>
+            <div v-if="message.isStatusCommand" class="command-result command-status">
+              <pre>command-status</pre>
+            </div>
 
             <!-- 普通命令：显示命令执行结果 -->
-            <div class="command-result"></div>
+            <div v-if="message.isCommandMessage" class="command-result">
+              <pre>command-result</pre>
+            </div>
             <!-- ======================== [命令消息]<<< ======================== -->
 
             <!-- ======================== >>>[流式传输指示器] ======================== -->

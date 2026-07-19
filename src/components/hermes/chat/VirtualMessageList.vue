@@ -1,12 +1,7 @@
 <script setup lang="ts">
-
 import type { Message } from '@/models/Session.ts'
 
-const props = defineProps<{ messages: Message[] }>()
-
-watch(() => props.messages, (val) => {
-  console.warn('messages:', val)
-})
+defineProps<{ messages: Message[] }>()
 </script>
 
 <template>

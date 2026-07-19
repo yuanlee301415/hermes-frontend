@@ -5,6 +5,8 @@ import { useToolTraceVisibility } from '@/composables/useToolTraceVisibility.ts'
 import MessageItem from './MessageItem.vue'
 import VirtualMessageList from './VirtualMessageList.vue'
 
+defineOptions({ name: 'MessageList' })
+
 const chatStore = useChatStore()
 const { toolTraceVisible } = useToolTraceVisibility()
 const currentToolCalls = computed(() => {
@@ -22,15 +24,12 @@ const currentToolCalls = computed(() => {
 
 const displayMessages = computed(() => {
   const currentToolIds = new Set(currentToolCalls.value.map(_ => _.id))
-  return chatStore.messages.filter(msg => {
-    if (msg.role === Message.ROLE_TOOL) {
-      return toolTraceVisible.value && !!msg.toolName && !(chatStore.isRunActive && currentToolIds.has(msg.id))
-    }
-    if (msg.role === Message.ROLE_ASSISTANT && msg.isStreaming && !msg.content?.trim() && !!msg.reasoning?.trim() && currentToolCalls.value.length === 0) {
-      return false
-    }
-    return true
+  const result = chatStore.messages.filter(msg => {
+    if (msg.role === Message.ROLE_TOOL) return toolTraceVisible.value && !!msg.toolName && !(chatStore.isRunActive && currentToolIds.has(msg.id))
+    return !(msg.role === Message.ROLE_ASSISTANT && msg.isStreaming && !msg.content?.trim() && !!msg.reasoning?.trim() && currentToolCalls.value.length === 0)
   })
+  console.log('MessageList>displayMessages:\n', result)
+  return result
 })
 
 </script>

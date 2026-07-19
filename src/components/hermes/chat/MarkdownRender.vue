@@ -1,8 +1,14 @@
 <script setup lang="ts">
 
-defineProps<{
-  content?: string
-}>()
+withDefaults(defineProps<{
+    content: string
+    // 标题 ID 前缀，用于区分不同消息的锚点
+    headingIdPrefix?: string
+  }>(),
+  {
+    headingIdPrefix: '',
+  }
+)
 </script>
 
 <template>

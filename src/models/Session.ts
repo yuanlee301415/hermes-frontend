@@ -1,10 +1,21 @@
 import { type SessionSummary } from '@/api/sessions.ts'
 
+// 消息角色 - 用户
 const ROLE_USER = 'user' as const
+// 消息角色 - AI
 const ROLE_ASSISTANT = 'assistant' as const
+// 消息角色 - 系统
 const ROLE_SYSTEM = 'system' as const
+// 消息角色 - 工具
 const ROLE_TOOL = 'tool' as const
+// 消息角色 - 命令
 const ROLE_COMMAND = 'command' as const
+
+// 系统消息类型 - 命令
+const SYSTEM_TYPE_COMMAND = 'command' as const
+// 系统消息类型 - 错误
+const SYSTEM_TYPE_ERROR = 'error' as const
+
 
 /** 消息附件接口 */
 export class Attachment {
@@ -47,12 +58,13 @@ export class Attachment {
  * - command: 命令消息（如 /clear, /compress）
  */
 export class Message {
-  // 消息唯一标识
+  // 唯一标识
   id: string
 
+  // 角色
   role: typeof ROLE_USER | typeof ROLE_ASSISTANT | typeof ROLE_SYSTEM | typeof ROLE_TOOL | typeof ROLE_COMMAND
 
-  // 消息内容
+  // 内容
   content: string
 
   // 时间戳（毫秒）
@@ -98,13 +110,16 @@ export class Message {
   queued?: boolean
 
   // 系统消息类型
-  systemType?: 'command' | 'error'
+  systemType?: typeof SYSTEM_TYPE_COMMAND | typeof SYSTEM_TYPE_ERROR
 
   // 命令动作类型
-  commandAction?: string
+  commandAction?: 'status' | string
 
   // 命令附带数据
-  commandData?: Record<string, unknown>
+  commandData?: {
+    type: 'glob' | string
+    [key: string]: unknown
+  }
 
   // 消息结束原因
   finishReason?: string | null
@@ -140,10 +155,42 @@ export class Message {
   static ROLE_SYSTEM = ROLE_SYSTEM
   static ROLE_TOOL = ROLE_TOOL
   static ROLE_COMMAND = ROLE_COMMAND
+
+  // 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
+  get isCommandMessage() {
+    return !!this.content && this.role === ROLE_COMMAND && this.systemType === SYSTEM_TYPE_COMMAND
+  }
+
+  // 是否为命令错误消息（command 角色且 systemType 为 error），用于展示命令执行失败
+  get isCommandError() {
+    return this.role === ROLE_COMMAND && this.systemType === SYSTEM_TYPE_ERROR
+  }
+
+  // 是否为状态命令消息：命令消息且 commandAction 为 status，且不是 goal 类型
+  // 状态命令用于展示 Hermes Agent 的运行状态信息
+  get isStatusCommand() {
+    return !!this.content && this.isCommandMessage && this.commandAction === 'status'  && this.commandData?.type !== 'glob'
+  }
+
+  // 是否为助手错误消息（assistant 角色且 systemType 为 error），用于特殊的错误样式展示
+  get isAgentError() {
+    return this.role === ROLE_ASSISTANT && this.systemType === SYSTEM_TYPE_ERROR
+  }
+
+  // 是否包含 reasoning 字段（来自事件/API 的思考文本）
+  get hasReasoningField() {
+    return !!this.reasoning
+  }
+
+  // 是否包含附件
+  get hasAttachments() {
+    return !!(this.attachments && this.attachments.length > 0)
+  }
 }
 
 export class Session {
-  id: string                                 // 会话唯一标识
+  // 唯一标识
+  id: string
 
   // 消息列表
   messages: Message[]
