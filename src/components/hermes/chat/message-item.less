@@ -1,0 +1,79 @@
+.message {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+
+  /*msg-tool*/
+  .msg-tool {
+    .tool-line {
+
+    }
+    .tool-details {
+
+    }
+  }
+  /*msg-tool End*/
+
+  /*msg-body*/
+  .msg-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+
+    .msg-avatar {
+
+    }
+
+    /*msg-content*/
+    .msg-content {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      max-width: 100%;
+
+
+      /*msg-bubble*/
+      .msg-bubble {
+        padding: 10px 12px;
+        font-size: 1rem;
+        line-height: 1.65;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        min-width: 0;
+        max-width: 100%;
+        position: relative;
+
+        .msg-attachments {
+
+        }
+        .thinking-block {
+
+        }
+        .command-result {
+
+        }
+        .command-status {
+
+        }
+      }
+      /*msg-bubble End*/
+
+      /*msg-meta*/
+      .msg-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        padding: 0 4px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+      /*msg-meta End*/
+    }
+    /*msg-content End*/
+  }
+  /*msg-body End*/
+}

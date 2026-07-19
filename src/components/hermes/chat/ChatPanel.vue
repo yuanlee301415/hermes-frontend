@@ -1,9 +1,15 @@
+<!--
+对话
+Todo:
+- [ ] header actions
+-->
 <script setup lang="ts">
 import type { SelectOption } from 'naive-ui'
 import { CheckboxOutline, AddOutline, GridOutline, MenuOutline, CopyOutline } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
+import MessageList from './MessageList.vue'
 import SessionListItem from './SessionListItem.vue'
 
 const profileOptions: SelectOption[] = [
@@ -83,15 +89,16 @@ async function handleSessionClick(sessionId: string) {
 
       <!--============ >>>[Chat header] ============-->
       <header class="chat-header">
-        <n-flex class="header-left" align="center">
+        <n-flex class="header-left" align="center" :size="8">
           <n-button quaternary circle size="small" @click="showSessions = !showSessions">
             <template #icon>
               <n-icon size="small"><GridOutline/></n-icon>
             </template>
           </n-button>
-          <h3 class="header-title">{{ activeSessionTitle }}</h3>
+          <h3 class="header-session-title">{{ activeSessionTitle }}</h3>
         </n-flex>
-        <n-flex class="header-actions" align="center">
+
+        <n-flex class="header-actions" align="center" :size="8">
           <n-button quaternary circle size="small" title="会话大纲">
             <template #icon>
               <MenuOutline/>
@@ -117,7 +124,7 @@ async function handleSessionClick(sessionId: string) {
       <!--============ >>>[Chat content] ============-->
       <div class="chat-content-wrapper">
         <div class="chat-main-content">
-          <pre>{{chatStore.activeSession}}</pre>
+          <MessageList ref="messageListRef" />
         </div>
       </div>
       <!--============ [Chat content]<<< ============-->
@@ -191,15 +198,14 @@ async function handleSessionClick(sessionId: string) {
       height: 70px;
       overflow: hidden;
       border-bottom: 1px solid var(--border-color);
-      gap: 0 30px;
+      gap: 0 20px;
       .header-left {
         flex: 1;
         flex-flow: nowrap;
         overflow: hidden;
         gap: 8px;
-        min-width: 0;
-        .header-title {
-          width: 0;
+
+        .header-session-title {
           flex: 1;
           overflow: hidden;
           font-size: 16px;
@@ -209,9 +215,7 @@ async function handleSessionClick(sessionId: string) {
         }
       }
       .header-actions {
-        flex-flow: nowrap;
         flex-shrink: 0;
-        gap: 4px;
       }
     }
 
@@ -226,6 +230,7 @@ async function handleSessionClick(sessionId: string) {
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        min-width: 0;
       }
     }
 

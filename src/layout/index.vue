@@ -25,6 +25,7 @@ defineOptions({ name: 'LayoutContainer' })
   height: 100%;
 
   .main-container {
+    min-width: 0;
     height: 100%;
     flex: 1;
   }

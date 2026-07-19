@@ -60,7 +60,8 @@ export const useChatStore = defineStore('chatStore', () => {
   const sessionsLoaded = ref(false)
   /** 当前活跃会话对象 */
   const activeSession = ref<Session|null>(null)
-
+  /** 当前活跃会话的消息列表 */
+  const messages = computed<Message[]>(() => activeSession.value?.messages || [])
   /** 中断状态 */
   const abortState = ref<{
     // 是否正在中断中
@@ -91,6 +92,21 @@ export const useChatStore = defineStore('chatStore', () => {
   /** 会话 ID → 已排队但尚未在对话中显示的用户消息 */
   const queueUserMessages = ref<Map<Session['id'], Message[]>>(new Map())
 
+  /** 会话 ID → 流式状态映射（包含 abort 方法） */
+  const streamStates = ref<Map<Session['id'], {abort: () => void}>>(new Map())
+
+  /** 是否正在流式传输（客户端或服务器有活跃运行） */
+  const isStreaming = computed(() => {
+    const sid = activeSessionId.value
+    if (!sid) return false
+    return streamStates.value.has(sid) || serverWorking.value.has(sid)
+  })
+
+  /** 是否有活跃运行（与 isStreaming 等价） */
+  const isRunActive = computed(() => isStreaming.value)
+
+
+  /*--------------------常量--------------------*/
   // 活跃流式传输期间 <think> 边界的临时观察。
   // 不持久化；会话切换时清除。
   const thinkingObservation = new Map<string, {startedAt?: number, endedAt?: number}>
@@ -603,6 +619,9 @@ export const useChatStore = defineStore('chatStore', () => {
     sessionsLoaded,
     activeSessionId,
     activeSession,
+    messages,
+    focusSessionId,
+    isRunActive,
     sessionProfileFilter,
     loadSessions,
     switchSession
