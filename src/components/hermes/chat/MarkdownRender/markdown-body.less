@@ -1,0 +1,258 @@
+// Markdown 样式
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.65;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+
+  p {
+    margin: 0 0 8px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  ul, ol {
+    padding-left: 20px;
+    margin: 4px 0 8px;
+  }
+
+  li {
+    margin: 2px 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  em {
+    color: var(--text-secondary);
+  }
+
+  a {
+    color: var(--accent-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+
+    &:hover {
+      color: var(--accent-hover);
+    }
+  }
+
+  img {
+    display: block;
+    max-width: 200px;
+    max-height: 160px;
+    object-fit: contain;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 8px 0;
+  }
+
+  .markdown-video-container {
+    margin: 12px 0;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border-color);
+  }
+
+  .markdown-video {
+    display: block;
+    width: 100%;
+    max-width: 640px;
+    max-height: 480px;
+    object-fit: contain;
+  }
+
+  .markdown-video-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    font-size: 12px;
+
+    .att-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .markdown-audio-container {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  .markdown-audio {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .markdown-audio-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+
+    .att-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .markdown-file-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background-color: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    margin: 8px 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.08);
+      border-color: var(--border-color);
+    }
+
+    .att-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px;
+    }
+
+    .att-download-icon {
+      flex-shrink: 0;
+      opacity: 0.6;
+      transition: opacity 0.15s ease;
+    }
+
+    .att-download-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+    }
+
+    &:hover .att-download-icon,
+    .att-download-btn:hover .att-download-icon {
+      opacity: 1;
+    }
+  }
+
+  blockquote {
+    margin: 8px 0;
+    padding: 4px 12px;
+    border-left: 3px solid var(--border-color);
+    color: var(--text-secondary);
+  }
+
+  code:not(.hljs) {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-code);
+    font-size: 13px;
+    color: var(--accent-primary);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    display: block;
+    overflow-x: auto;
+
+    th, td {
+      padding: 6px 12px;
+      border: 1px solid var(--border-color);
+      text-align: left;
+      font-size: 13px;
+    }
+
+    th {
+      background: rgba(var(--accent-primary-rgb), 0.08);
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    td {
+      color: var(--text-secondary);
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 12px 0;
+  }
+
+  .mermaid-diagram {
+    margin: 10px 0;
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(var(--accent-primary-rgb), 0.04);
+    overflow-x: auto;
+
+    svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+  }
+
+  .mermaid-loading {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-family: var(--font-code);
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

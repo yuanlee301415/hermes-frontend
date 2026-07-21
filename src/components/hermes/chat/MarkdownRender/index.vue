@@ -2,10 +2,10 @@
 Markdown 渲染
 Todo:
 - [ ] 初始运行逻辑
-- [ ] 代码高亮器
-- [ ] 复制代码块
 - [ ] 文件预览
+- [ ] 文件下载
 - [ ] Mermaid 图表
+- [ ] Bug: 数字公式横向滚动条
 -->
 <script lang="ts">
 import MarkdownIt from 'markdown-it'
@@ -14,6 +14,7 @@ import mk from '@vscode/markdown-it-katex'
 import katex from 'katex'
 import { isLatexFence, renderLatexFence } from '@/components/hermes/shared/render-latex.ts'
 import { isMermaidFence, renderMermaidPlaceholder } from '@/components/hermes/shared/mermaidRenderer.ts'
+import { renderHighlightedCodeBlock, handleCodeBlockCopyClick } from '../../shared/highlight.ts'
 
 // 支持的视频文件扩展名
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov'])
@@ -22,10 +23,17 @@ const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov'])
 const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'])
 
 const md: MarkdownIt = new MarkdownItConstructor({
-  html: false,
-  breaks: true,
-  linkify: true
-}).use(mk.default, {
+  html: false, // 禁用 HTML 标签解析，防止 XSS
+  breaks: true, // 自动将换行转换为 <br>
+  linkify: true, // 自动识别链接并转换为 <a>
+  typographer: true, // 启用排版优化（如引号转换）
+  // 自定义代码高亮器
+  highlight(str: string, lang: string): string {
+    return renderHighlightedCodeBlock(str, lang, '复制', {
+      formatDiffFoldLabel: diffFoldLabel,
+    })
+  },
+}).use((mk as any).default, {
   katex,
   throwOnError: false, // 渲染错误时不抛出异常
   strict: 'ignore' // 忽略严格模式检查
@@ -55,9 +63,18 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
   if (defaultFenceRenderer) {
     return defaultFenceRenderer(tokens, idx, options, env, self)
   }
+
   return self.renderToken(tokens, idx, options)
 }
 
+/**
+ * 生成 diff 折叠标签文本
+ * @param hiddenCount 隐藏的行数
+ * @returns 本地化的标签文本
+ */
+function diffFoldLabel(hiddenCount: number): string {
+  return `${hiddenCount} 行未修改`
+}
 </script>
 
 <script setup lang="ts">
@@ -69,8 +86,8 @@ import {
   getMarkdownAudio,
   getMarkdownVideo,
   getMarkdownFile
-} from '../shared/render-media.ts'
-import { repairNestedMarkdownFences } from '../shared/markdownFenceRepair.ts'
+} from '../../shared/render-media.ts'
+import { repairNestedMarkdownFences } from '../../shared/markdownFenceRepair.ts'
 
 const props = withDefaults(defineProps<{
     content: string
@@ -161,8 +178,22 @@ const renderedHtml = computed(() => {
   return html
 })
 
-
-async function handleMarkdownClick(): Promise<void> {
+/**
+ * 处理 Markdown 内容的点击事件
+ * 支持的交互：
+ * - 代码块复制按钮
+ */
+async function handleMarkdownClick(event: MouseEvent): Promise<void> {
+  // 优先处理代码块复制操作
+  const copyResult = await handleCodeBlockCopyClick(event)
+  if (copyResult !== null) {
+    if (copyResult) {
+      window.$message?.success('复制成功')
+    } else {
+      window.$message?.error('复制失败')
+    }
+    return
+  }
 }
 </script>
 
@@ -172,261 +203,6 @@ async function handleMarkdownClick(): Promise<void> {
 </template>
 
 <style lang="less">
-.markdown-body {
-  font-size: 14px;
-  line-height: 1.65;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: auto;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-
-  p {
-    margin: 0 0 8px;
-    min-width: 0;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  ul, ol {
-    padding-left: 20px;
-    margin: 4px 0 8px;
-  }
-
-  li {
-    margin: 2px 0;
-    min-width: 0;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-  }
-
-  strong {
-    color: var(--text-primary);
-    font-weight: 600;
-  }
-
-  em {
-    color: var(--text-secondary);
-  }
-
-  a {
-    color: var(--accent-primary);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-
-    &:hover {
-      color: var(--accent-hover);
-    }
-  }
-
-  img {
-    display: block;
-    max-width: 200px;
-    max-height: 160px;
-    object-fit: contain;
-    cursor: pointer;
-    border-radius: 4px;
-    margin: 8px 0;
-  }
-
-  .markdown-video-container {
-    margin: 12px 0;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: #000;
-    border: 1px solid var(--border-color);
-  }
-
-  .markdown-video {
-    display: block;
-    width: 100%;
-    max-width: 640px;
-    max-height: 480px;
-    object-fit: contain;
-  }
-
-  .markdown-video-footer {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.85);
-    color: #fff;
-    font-size: 12px;
-
-    .att-name {
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-
-  .markdown-audio-container {
-    margin: 12px 0;
-    padding: 10px 12px;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    background-color: rgba(0, 0, 0, 0.04);
-  }
-
-  .markdown-audio {
-    display: block;
-    width: 100%;
-    max-width: 420px;
-  }
-
-  .markdown-audio-footer {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 6px;
-    color: var(--text-secondary);
-    font-size: 12px;
-
-    .att-name {
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-
-  .markdown-file-card {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    background-color: rgba(0, 0, 0, 0.04);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    margin: 8px 0;
-    cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
-
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.08);
-      border-color: var(--border-color);
-    }
-
-    .att-name {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 160px;
-    }
-
-    .att-download-icon {
-      flex-shrink: 0;
-      opacity: 0.6;
-      transition: opacity 0.15s ease;
-    }
-
-    .att-download-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      width: 18px;
-      height: 18px;
-      padding: 0;
-      color: inherit;
-      background: transparent;
-      border: 0;
-      cursor: pointer;
-    }
-
-    &:hover .att-download-icon,
-    .att-download-btn:hover .att-download-icon {
-      opacity: 1;
-    }
-  }
-
-  blockquote {
-    margin: 8px 0;
-    padding: 4px 12px;
-    border-left: 3px solid var(--border-color);
-    color: var(--text-secondary);
-  }
-
-  code:not(.hljs) {
-    background: var(--code-bg);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: var(--font-code);
-    font-size: 13px;
-    color: var(--accent-primary);
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  table {
-    width: 100%;
-    max-width: 100%;
-    border-collapse: collapse;
-    margin: 8px 0;
-    display: block;
-    overflow-x: auto;
-
-    th, td {
-      padding: 6px 12px;
-      border: 1px solid var(--border-color);
-      text-align: left;
-      font-size: 13px;
-    }
-
-    th {
-      background: rgba(var(--accent-primary-rgb), 0.08);
-      color: var(--text-primary);
-      font-weight: 600;
-    }
-
-    td {
-      color: var(--text-secondary);
-    }
-  }
-
-  hr {
-    border: none;
-    border-top: 1px solid var(--border-color);
-    margin: 12px 0;
-  }
-
-  .mermaid-diagram {
-    margin: 10px 0;
-    padding: 14px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: rgba(var(--accent-primary-rgb), 0.04);
-    overflow-x: auto;
-
-    svg {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }
-  }
-
-  .mermaid-loading {
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-family: var(--font-code);
-    min-height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
+@import 'markdown-body';
+@import 'code-block';
 </style>
