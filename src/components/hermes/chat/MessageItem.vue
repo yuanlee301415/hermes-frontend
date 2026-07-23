@@ -50,7 +50,7 @@ const hasThinking = computed(() => props.message.hasReasoningField || parsedThin
 // - 空内容不支持复制
 // - 其他消息类型返回原始内容
 const copyableContent = computed(() => {
-  if (props.message.role === Message.ROLE_TOOL) return null
+  if (props.message.role === Message.ROLE.Tool) return null
   const content = props.message.content ?? ''
   if (!content.trim()) return null
   return content
@@ -61,7 +61,7 @@ const copyableContent = computed(() => {
 <template>
   <div class="message" :class="[message.role, {highlight}]" :id="`message-${message.id}`">
     <!-- ================================ >>>[工具] ================================ -->
-    <div v-if="message.role === Message.ROLE_TOOL" class="msg-tool">
+    <div v-if="message.role === Message.ROLE.Tool" class="msg-tool">
       <!--Todo: 工具-->
       <div class="tool-line"></div>
       <div class="tool-details"></div>
@@ -71,14 +71,14 @@ const copyableContent = computed(() => {
     <!-- ================================ >>>[消息] ================================ -->
     <template v-else>
       <div class="msg-body">
-        <ProfileAvatar v-if="message.role === Message.ROLE_ASSISTANT" class="msg-avatar"/>
+        <ProfileAvatar v-if="message.role === Message.ROLE.Assistant" class="msg-avatar"/>
 
         <div class="msg-content" :class="message.role">
           <!-- ============================ >>>[消息气泡] ============================ -->
           <div
             class="msg-bubble"
             :class="{
-            system: message.role === Message.ROLE_SYSTEM,
+            system: message.role === Message.ROLE.System,
             'agent-error': message.isAgentError,
             command: message.isCommandMessage,
             'command-error': message.isCommandError
@@ -97,7 +97,7 @@ const copyableContent = computed(() => {
               <div v-if="hasThinking" class="thinking-block"></div>
 
               <MarkdownRender
-                v-if="parsedThinking.body && message.role === Message.ROLE_ASSISTANT"
+                v-if="parsedThinking.body && message.role === Message.ROLE.Assistant"
                 :content="message.content"
                 :heading-id-prefix="headingIdPrefix"
               />
@@ -105,7 +105,7 @@ const copyableContent = computed(() => {
             <!-- ======================== [思考内容]<<< ======================== -->
 
             <!-- ======================== >>>[用户消息] ======================== -->
-            <template v-if="message.role === Message.ROLE_USER">
+            <template v-if="message.role === Message.ROLE.User">
               <template v-if="isContentBlockArray">
                 <!-- 用户消息中的文件附件（图片或普通文件） -->
                 <div class="msg-attachments">
@@ -123,7 +123,7 @@ const copyableContent = computed(() => {
 
 
             <!-- ======================== >>>[AI 消息] ======================== -->
-            <template v-if="message.role === Message.ROLE_ASSISTANT">
+            <template v-if="message.role === Message.ROLE.Assistant">
               <MarkdownRender
                 v-if="message.content && !parsedThinking.body"
                 :content="message.content"
@@ -134,7 +134,7 @@ const copyableContent = computed(() => {
 
 
             <!-- ======================== >>>[系统消息] ======================== -->
-            <template v-if="message.role === Message.ROLE_SYSTEM">
+            <template v-if="message.role === Message.ROLE.System">
               <MarkdownRender v-if="message.isCommandMessage" :content="message.content"/>
             </template>
             <!-- ======================== [系统消息]<<< ======================== -->

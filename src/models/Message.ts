@@ -2,22 +2,27 @@
 * 消息 Model
 * */
 
-// 消息角色 - 用户
-const ROLE_USER = 'user' as const
-// 消息角色 - AI
-const ROLE_ASSISTANT = 'assistant' as const
-// 消息角色 - 系统
-const ROLE_SYSTEM = 'system' as const
-// 消息角色 - 工具
-const ROLE_TOOL = 'tool' as const
-// 消息角色 - 命令
-const ROLE_COMMAND = 'command' as const
+// 消息角色
+const ROLE = {
+  // 用户
+  User: 'user',
+  // 助手
+  Assistant: 'assistant',
+  // 系统
+  System: 'system',
+  // 工具
+  Tool: 'tool',
+  // 命令
+  Command: 'command',
+} as const
+
 
 // 系统消息类型 - 命令
 const SYSTEM_TYPE_COMMAND = 'command' as const
 // 系统消息类型 - 错误
 const SYSTEM_TYPE_ERROR = 'error' as const
 
+export type MessageRole = typeof ROLE[keyof typeof ROLE]
 
 /** 消息附件接口 */
 export class Attachment {
@@ -64,7 +69,7 @@ export class Message {
   id: string
 
   // 角色
-  role: typeof ROLE_USER | typeof ROLE_ASSISTANT | typeof ROLE_SYSTEM | typeof ROLE_TOOL | typeof ROLE_COMMAND
+  role: MessageRole
 
   // 内容
   content: string
@@ -152,20 +157,16 @@ export class Message {
     this.runMarker = _.runMarker
   }
 
-  static ROLE_USER = ROLE_USER
-  static ROLE_ASSISTANT = ROLE_ASSISTANT
-  static ROLE_SYSTEM = ROLE_SYSTEM
-  static ROLE_TOOL = ROLE_TOOL
-  static ROLE_COMMAND = ROLE_COMMAND
+  static ROLE = ROLE
 
   // 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
   get isCommandMessage() {
-    return !!this.content && this.role === ROLE_COMMAND && this.systemType === SYSTEM_TYPE_COMMAND
+    return !!this.content && this.role === ROLE.Command && this.systemType === SYSTEM_TYPE_COMMAND
   }
 
   // 是否为命令错误消息（command 角色且 systemType 为 error），用于展示命令执行失败
   get isCommandError() {
-    return this.role === ROLE_COMMAND && this.systemType === SYSTEM_TYPE_ERROR
+    return this.role === ROLE.Command && this.systemType === SYSTEM_TYPE_ERROR
   }
 
   // 是否为状态命令消息：命令消息且 commandAction 为 status，且不是 goal 类型
@@ -176,7 +177,7 @@ export class Message {
 
   // 是否为助手错误消息（assistant 角色且 systemType 为 error），用于特殊的错误样式展示
   get isAgentError() {
-    return this.role === ROLE_ASSISTANT && this.systemType === SYSTEM_TYPE_ERROR
+    return this.role === ROLE.Assistant && this.systemType === SYSTEM_TYPE_ERROR
   }
 
   // 是否包含 reasoning 字段（来自事件/API 的思考文本）

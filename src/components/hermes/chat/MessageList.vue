@@ -13,20 +13,20 @@ const currentToolCalls = computed(() => {
   const msgs = chatStore.messages
   let lastIndex = -1
   for (let i = msgs.length - 1; i >=0; i--) {
-    if (msgs[i].role === Message.ROLE_USER) {
+    if (msgs[i].role === Message.ROLE.User) {
       lastIndex = i
       break
     }
   }
-  const tools = msgs.filter((msg, idx) => msg.role === Message.ROLE_TOOL && idx > lastIndex)
+  const tools = msgs.filter((msg, idx) => msg.role === Message.ROLE.Tool && idx > lastIndex)
   return [...tools].reverse()
 })
 
 const displayMessages = computed(() => {
   const currentToolIds = new Set(currentToolCalls.value.map(_ => _.id))
   const result = chatStore.messages.filter(msg => {
-    if (msg.role === Message.ROLE_TOOL) return toolTraceVisible.value && !!msg.toolName && !(chatStore.isRunActive && currentToolIds.has(msg.id))
-    return !(msg.role === Message.ROLE_ASSISTANT && msg.isStreaming && !msg.content?.trim() && !!msg.reasoning?.trim() && currentToolCalls.value.length === 0)
+    if (msg.role === Message.ROLE.Tool) return toolTraceVisible.value && !!msg.toolName && !(chatStore.isRunActive && currentToolIds.has(msg.id))
+    return !(msg.role === Message.ROLE.Assistant && msg.isStreaming && !msg.content?.trim() && !!msg.reasoning?.trim() && currentToolCalls.value.length === 0)
   })
   console.log('MessageList>displayMessages:\n', result)
   return result

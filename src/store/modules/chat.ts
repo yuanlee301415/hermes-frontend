@@ -288,7 +288,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
           // 如果没有标题，从第一条用户消息生成
           if (!target.title) {
-            const firstUser = target.messages.find(msg => msg.role === Message.ROLE_TOOL)
+            const firstUser = target.messages.find(msg => msg.role === Message.ROLE.Tool)
             if (firstUser) {
               const title = firstUser.content.slice(0, 30)
               target.title = title + (firstUser.content.length > 30 ? '...' : '')
@@ -328,7 +328,7 @@ export const useChatStore = defineStore('chatStore', () => {
   function mapHermesMessages(msgs: HermesMessage[]): Message[] {
     // 过滤掉没有显示内容的 assistant 消息（除非包含 tool_calls 元数据，用于恢复历史时命名工具结果行）
     const filteredMsgs = msgs.filter(msg => {
-      if (msg.role === Message.ROLE_ASSISTANT) {
+      if (msg.role === Message.ROLE.Assistant) {
         return ( msg.tool_calls?.length ?? 0) > 0 || !!runtimePayloadText(msg.content).trim()
       }
       return true
@@ -339,7 +339,7 @@ export const useChatStore = defineStore('chatStore', () => {
     const toolArgsMap = new Map<string, unknown>()
 
     for (const msg of filteredMsgs) {
-      if (msg.role === Message.ROLE_ASSISTANT && msg.tool_calls) {
+      if (msg.role === Message.ROLE.Assistant && msg.tool_calls) {
         for (const tc of msg.tool_calls) {
           if (tc.id) {
             if (tc.function?.name) toolNameMap.set(tc.id, tc.function.name)
@@ -353,11 +353,11 @@ export const useChatStore = defineStore('chatStore', () => {
 
     for (const msg of filteredMsgs) {
       // 跳过只包含 tool_calls 的 assistant 消息（无实际内容），为每个工具调用生成 tool.started 消息
-      if (msg.role === Message.ROLE_ASSISTANT && msg.tool_calls?.length && !runtimePayloadText(msg.content).trim()) {
+      if (msg.role === Message.ROLE.Assistant && msg.tool_calls?.length && !runtimePayloadText(msg.content).trim()) {
         for (const tc of msg.tool_calls) {
           result.push(new Message({
             id: String(msg.id) + '_' + tc.id,
-            role: Message.ROLE_TOOL,
+            role: Message.ROLE.Tool,
             content: '',
             timestamp: Math.round(msg.timestamp * 1000),
             toolName: tc.function?.name,
@@ -372,7 +372,7 @@ export const useChatStore = defineStore('chatStore', () => {
       }
 
       // 工具结果消息处理
-      if (msg.role === Message.ROLE_TOOL) {
+      if (msg.role === Message.ROLE.Tool) {
         const tcId = msg.tool_call_id ?? ''
         const toolName = msg.tool_name || toolNameMap.get(tcId)
         const toolArgs = toolArgsMap.get(tcId)
@@ -391,7 +391,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
         // 查找并移除上面生成的占位符工具消息
         const placeholderIdx = result.findIndex(msg =>
-          msg.role === Message.ROLE_TOOL
+          msg.role === Message.ROLE.Tool
           && msg.toolName === toolName
           && !msg.toolResult
           && msg.id.includes('_' + tcId)
@@ -402,7 +402,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
         result.push(new Message({
           id: String(msg.id),
-          role: Message.ROLE_TOOL,
+          role: Message.ROLE.Tool,
           content: '',
           timestamp: Math.round(msg.timestamp * 1000),
           toolName,
@@ -424,7 +424,7 @@ export const useChatStore = defineStore('chatStore', () => {
         content: msg.content,
         timestamp: Math.round(msg.timestamp * 1000),
         reasoning: msg.reasoning ?? undefined,
-        systemType: msg.role === Message.ROLE_COMMAND ? Message.ROLE_COMMAND : undefined,
+        systemType: msg.role === Message.ROLE.Command ? Message.ROLE.Command : undefined,
         finishReason: readFinishReason(msg),
         runMarker: readRunMarker(msg)
       }))
@@ -545,7 +545,7 @@ export const useChatStore = defineStore('chatStore', () => {
       if (!mesageId || !content.trim()) return  []
 
       const timestamp = typeof peer?.timestamp  === 'number'  && Number.isFinite(peer.timestamp) ? Math.round(peer.timestamp * 1000) : Date.now()
-      const role = peer?.role === Message.ROLE_COMMAND ? Message.ROLE_COMMAND : Message.ROLE_USER
+      const role = peer?.role === Message.ROLE.Command ? Message.ROLE.Command : Message.ROLE.User
 
       return [new Message({
         id: mesageId,
@@ -553,7 +553,7 @@ export const useChatStore = defineStore('chatStore', () => {
         content,
         timestamp,
         queued: true,
-        systemType: role === Message.ROLE_COMMAND ? Message.ROLE_COMMAND : undefined
+        systemType: role === Message.ROLE.Command ? Message.ROLE.Command : undefined
       })]
     })
   }
