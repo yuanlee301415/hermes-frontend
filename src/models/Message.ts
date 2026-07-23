@@ -25,8 +25,19 @@ const SYSTEM_TYPE = {
   Error: 'error'
 } as const
 
+// 工具执行状态
+const TOOL_STATUS = {
+  // 运行中
+  Running: 'running',
+  // 完成
+  Done: 'done',
+  // 错误
+  Error: 'error'
+} as const
+
 export type MessageRole = typeof ROLE[keyof typeof ROLE]
 export type MessageSystemType = typeof SYSTEM_TYPE[keyof typeof SYSTEM_TYPE]
+export type MessageToolStatus = typeof TOOL_STATUS[keyof typeof TOOL_STATUS]
 
 /** 消息附件接口 */
 export class Attachment {
@@ -97,7 +108,7 @@ export class Message {
   toolResult?: unknown
 
   // 工具执行状态
-  toolStatus?: 'running' | 'done' | 'error'
+  toolStatus?: MessageToolStatus
 
   // 工具执行时长（秒）
   toolDuration?: number
@@ -163,6 +174,7 @@ export class Message {
 
   static ROLE = ROLE
   static SYSTEM_TYPE = SYSTEM_TYPE
+  static TOOL_STATUS = TOOL_STATUS
 
   // 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
   get isCommandMessage() {

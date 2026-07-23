@@ -363,7 +363,7 @@ export const useChatStore = defineStore('chatStore', () => {
             toolName: tc.function?.name,
             toolCallId: tc.id,
             toolArgs: runtimeToolPayloadOrUndefined(tc.function?.arguments),
-            toolStatus: 'done',
+            toolStatus: Message.TOOL_STATUS.Done,
             finishReason: readFinishReason(msg),
             runMarker: readRunMarker(msg)
           }))
@@ -410,7 +410,7 @@ export const useChatStore = defineStore('chatStore', () => {
           toolCallId: tcId,
           toolPreview: preview,
           toolResult: runtimeToolPayloadOrUndefined(msg.content),
-          toolStatus: 'done',
+          toolStatus: Message.TOOL_STATUS.Done,
           finishReason: readFinishReason(msg),
           runMarker: readRunMarker(msg)
         }))
