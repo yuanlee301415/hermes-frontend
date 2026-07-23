@@ -17,12 +17,16 @@ const ROLE = {
 } as const
 
 
-// 系统消息类型 - 命令
-const SYSTEM_TYPE_COMMAND = 'command' as const
-// 系统消息类型 - 错误
-const SYSTEM_TYPE_ERROR = 'error' as const
+// 系统消息类型
+const SYSTEM_TYPE = {
+  // 命令
+  Command: 'command',
+  // 错误
+  Error: 'error'
+} as const
 
 export type MessageRole = typeof ROLE[keyof typeof ROLE]
+export type MessageSystemType = typeof SYSTEM_TYPE[keyof typeof SYSTEM_TYPE]
 
 /** 消息附件接口 */
 export class Attachment {
@@ -117,7 +121,7 @@ export class Message {
   queued?: boolean
 
   // 系统消息类型
-  systemType?: typeof SYSTEM_TYPE_COMMAND | typeof SYSTEM_TYPE_ERROR
+  systemType?: MessageSystemType
 
   // 命令动作类型
   commandAction?: 'status' | string
@@ -158,15 +162,16 @@ export class Message {
   }
 
   static ROLE = ROLE
+  static SYSTEM_TYPE = SYSTEM_TYPE
 
   // 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
   get isCommandMessage() {
-    return !!this.content && this.role === ROLE.Command && this.systemType === SYSTEM_TYPE_COMMAND
+    return !!this.content && this.role === ROLE.Command && this.systemType === SYSTEM_TYPE.Command
   }
 
   // 是否为命令错误消息（command 角色且 systemType 为 error），用于展示命令执行失败
   get isCommandError() {
-    return this.role === ROLE.Command && this.systemType === SYSTEM_TYPE_ERROR
+    return this.role === ROLE.Command && this.systemType === SYSTEM_TYPE.Error
   }
 
   // 是否为状态命令消息：命令消息且 commandAction 为 status，且不是 goal 类型
@@ -177,7 +182,7 @@ export class Message {
 
   // 是否为助手错误消息（assistant 角色且 systemType 为 error），用于特殊的错误样式展示
   get isAgentError() {
-    return this.role === ROLE.Assistant && this.systemType === SYSTEM_TYPE_ERROR
+    return this.role === ROLE.Assistant && this.systemType === SYSTEM_TYPE.Error
   }
 
   // 是否包含 reasoning 字段（来自事件/API 的思考文本）
