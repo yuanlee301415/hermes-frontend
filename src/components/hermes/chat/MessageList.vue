@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useChatStore } from '@/store/modules/chat.ts'
-import { Message } from '@/models/Session.ts'
+import { Message } from '@/models/Message.ts'
 import { useToolTraceVisibility } from '@/composables/useToolTraceVisibility.ts'
 import MessageItem from './MessageItem.vue'
 import VirtualMessageList from './VirtualMessageList.vue'

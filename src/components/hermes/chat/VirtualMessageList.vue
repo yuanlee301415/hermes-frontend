@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Message } from '@/models/Session.ts'
+import type { Message } from '@/models/Message.ts'
 
 defineProps<{ messages: Message[] }>()
 </script>

@@ -21,7 +21,8 @@
 import { defineStore } from 'pinia'
 import { getSessionsApi, type HermesMessage } from '@/api/sessions.ts'
 import { resumeSession, type RunEvent } from '@/api/chat.ts'
-import { Message, Session } from '@/models/Session.ts'
+import { Session } from '@/models/Session.ts'
+import { Message } from '@/models/Message.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { getItemBestEffort, removeItem, isQuotaExceededError, hasRuntimeToolPayload, runtimeToolPayloadOrUndefined, runtimePayloadText, readFinishReason, readRunMarker } from '../shared'
 

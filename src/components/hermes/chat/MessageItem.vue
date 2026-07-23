@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CopyOutline } from '@vicons/ionicons5'
-import { Message } from '@/models/Session.ts'
+import { Message } from '@/models/Message.ts'
 import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
 import { formatTime } from '@/utils/formatTime.ts'
 import MarkdownRender from './MarkdownRender/index.vue'
