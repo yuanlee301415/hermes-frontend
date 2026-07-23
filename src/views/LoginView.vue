@@ -7,7 +7,7 @@ const TITLE = import.meta.env.VITE_APP_TITLE
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { setApiKey } from '@/api/request.ts'
+import { setApiKey } from '@/api/client.ts'
 import { loginWithPassword } from '@/api/auth.ts'
 import { CHAT_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 

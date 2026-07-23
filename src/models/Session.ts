@@ -127,7 +127,7 @@ export class Message {
   // 运行标记（用于恢复会话时追踪）
   runMarker?: string | null
 
-  constructor(_: Message) {
+  constructor(_: Omit<Message, 'isCommandMessage' | 'isCommandError' | 'isStatusCommand' | 'isAgentError' | 'hasReasoningField' | 'hasAttachments'>) {
     this.id = _.id
     this.role = _.role
     this.content = _.content

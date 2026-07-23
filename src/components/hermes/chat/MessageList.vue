@@ -41,7 +41,7 @@ const displayMessages = computed(() => {
       :messages="displayMessages" v-slot="{item}"
       ref="listRef"
     >
-      <MessageItem :message="item" :highlight="chatStore.focusSessionId" />
+      <MessageItem :message="item" :highlight="chatStore.focusSessionId === item.id" />
     </VirtualMessageList>
   </div>
 </template>

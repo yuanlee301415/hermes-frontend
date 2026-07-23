@@ -518,7 +518,7 @@ export const useChatStore = defineStore('chatStore', () => {
     }))
     const nextMap = new Map(queueUserMessages.value)
     if (merged.length) {
-      nextMap.set(sessionId, merged)
+      nextMap.set(sessionId, merged as Message[])
     } else {
       nextMap.delete(sessionId)
     }
