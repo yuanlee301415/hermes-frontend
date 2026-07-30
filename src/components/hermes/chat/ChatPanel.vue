@@ -11,6 +11,7 @@ import { useChatStore } from '@/store/modules/chat.ts'
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 import MessageList from './MessageList.vue'
 import SessionListItem from './SessionListItem.vue'
+import ChatInput from './ChatInput/index.vue'
 
 const profileOptions: SelectOption[] = [
   {
@@ -130,9 +131,7 @@ async function handleSessionClick(sessionId: string) {
       <!--============ [Chat content]<<< ============-->
 
       <!--============ >>>[Chat input] ============-->
-      <div class="chat-input-area">
-        <n-input type="textarea"/>
-      </div>
+      <ChatInput/>
       <!--============ [Chat input]<<< ============-->
 
     </div>
@@ -232,12 +231,6 @@ async function handleSessionClick(sessionId: string) {
         flex-direction: column;
         min-width: 0;
       }
-    }
-
-    .chat-input-area {
-      padding: 12px 20px 16px;
-      border-top: 1px solid var(--border-color);
-      flex-shrink: 0;
     }
   }
 }

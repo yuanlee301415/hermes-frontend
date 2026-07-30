@@ -36,7 +36,6 @@ watch(routeSessionId, async (sessionId) => {
 })
 
 onMounted(async () => {
-  console.warn('ChatView>onMounted')
   await Promise.all([
     profileStore.fetchProfiles(),
   ])
@@ -44,11 +43,6 @@ onMounted(async () => {
 })
 
 async function loadRouteSession() {
-  console.log('ChatView>loadRouteSession:', {
-    routeSessionId: routeSessionId.value,
-    activeSessionId: chatStore.activeSessionId
-  })
-
   await chatStore.loadSessions(chatStore.sessionProfileFilter, routeSessionId.value)
   if (routeSessionId.value && chatStore.activeSessionId !== routeSessionId.value) {
     await router.replace({

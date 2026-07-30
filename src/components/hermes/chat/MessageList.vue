@@ -28,7 +28,7 @@ const displayMessages = computed(() => {
     if (msg.role === Message.ROLE.Tool) return toolTraceVisible.value && !!msg.toolName && !(chatStore.isRunActive && currentToolIds.has(msg.id))
     return !(msg.role === Message.ROLE.Assistant && msg.isStreaming && !msg.content?.trim() && !!msg.reasoning?.trim() && currentToolCalls.value.length === 0)
   })
-  console.log('MessageList>displayMessages:\n', result)
+  // console.log('MessageList>displayMessages:\n', result)
   return result
 })
 

@@ -6,7 +6,7 @@ const ACTIVE_PROFILE_STORAGE_KEY = 'hermes_active_profile_name'
 
 export const useProfilesStore = defineStore('profilesStore', () => {
   const profiles = ref<Profile[]>([])
-  const activeProfileName = ref<string | null>(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY))
+  const activeProfileName = ref<string | undefined>(localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY) ?? undefined)
   const activeProfile = ref<Profile | null>(null)
   const loading = ref(false)
 
@@ -32,17 +32,12 @@ export const useProfilesStore = defineStore('profilesStore', () => {
       }))
 
       if (!selected) {
-        activeProfileName.value = null
+        activeProfileName.value = undefined
         localStorage.removeItem(ACTIVE_PROFILE_STORAGE_KEY)
       }
     } catch (e) {
       console.error('[fetchProfiles]::\n', e)
     } finally {
-      console.log('fetchProfiles:', {
-        profiles,
-        activeProfile,
-        activeProfileName,
-      })
       loading.value = false
     }
   }

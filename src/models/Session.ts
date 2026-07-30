@@ -4,6 +4,52 @@
 import { type SessionSummary } from '@/api/sessions.ts'
 import { Message } from './Message.ts'
 
+// 会话来源
+const SOURCE = {
+  ApiServer: 'api_server',
+  Cli: 'cli',
+  CodingAgent: 'coding_agent'
+} as const
+
+// Agent 类型
+const AGENT = {
+  Hermes: 'hermes',
+  Claude: 'claude',
+  Codex: 'codex'
+} as const
+
+// 编码 Agent ID
+const CODING_AGENT_ID= {
+  ClaudeCode: 'claude-code',
+  Codex: 'codex'
+} as const
+
+// 编码 Agent 模式
+const CODING_AGENT_MODE = {
+  Global: 'global',
+  Scoped: 'scoped'
+} as const
+
+// 模型提供商
+const PROVIDER = {
+  Global: 'global',
+  Scoped: 'scoped'
+} as const
+
+// API 模式
+const API_MODE = {
+  ChatCompletions: 'chat_completions',
+  CodexResponses: 'codex_responses',
+  AnthropicMessages: 'anthropic_messages'
+} as const
+
+export type SessionSource = typeof SOURCE[keyof typeof SOURCE]
+export type SessionAgent = typeof AGENT[keyof typeof AGENT]
+export type SessionCodingAgentId = typeof CODING_AGENT_ID[keyof typeof CODING_AGENT_ID]
+export type SessionProvider = typeof PROVIDER[keyof typeof PROVIDER]
+export type SessionApiMode = typeof API_MODE[keyof typeof API_MODE]
+export type SessionCodingAgentMode = typeof CODING_AGENT_MODE[keyof typeof CODING_AGENT_MODE]
+
 export class Session {
   // 唯一标识
   id: string
@@ -18,16 +64,16 @@ export class Session {
   updatedAt: number
 
   // 所属 Profile
-  profile?: string
+  profile?: string = 'default'
 
   // 会话标题（自动生成或用户设置）
   title: string
 
-  // 会话来源（api_server/cli/coding_agent）
-  source?: string
+  // 会话来源
+  source?: SessionSource
 
   // 使用的 Agent 类型
-  agent?: string
+  agent?: SessionAgent
 
   // Agent 层会话 ID
   agentSessionId?: string
@@ -36,16 +82,16 @@ export class Session {
   agentNativeSessionId?: string
 
   // 编码 Agent ID
-  codingAgentId?: 'claude-code' | 'codex'
+  codingAgentId?: SessionCodingAgentId
 
   // 编码 Agent 模式
-  codingAgentMode?: 'global' | 'scoped'
+  codingAgentMode?: SessionCodingAgentMode
 
   // 使用的模型名称
   model?: string
 
   // 模型提供商
-  provider?: string
+  provider?: SessionProvider
 
   // 自定义 API 基础 URL
   baseUrl?: string
@@ -54,7 +100,7 @@ export class Session {
   apiKey?: string
 
   // API 模式
-  apiMode?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
+  apiMode?: SessionApiMode
 
   // 消息计数
   messageCount?: number
@@ -128,21 +174,28 @@ export class Session {
     this.reasoningEffort = _.reasoningEffort
   }
 
+  static SOURCE = SOURCE
+  static AGENT = AGENT
+  static CODING_AGENT_ID = CODING_AGENT_ID
+  static CODING_AGENT_MODE = CODING_AGENT_MODE
+  static PROVIDER = PROVIDER
+  static API_MODE = API_MODE
+
   static fromSummary(list: SessionSummary[]): Session[] {
     return list.map(_ => {
       // 判断编码 Agent 模式
-      const codingAgentMode = _.source === 'coding_agent'
-        ? (_.agent_mode === 'global' || _.agent_mode === 'scoped'
+      const codingAgentMode = _.source === SOURCE.CodingAgent
+        ? (_.agent_mode === CODING_AGENT_MODE.Global || _.agent_mode === CODING_AGENT_MODE.Scoped
           ? _.agent_mode
-          : _.provider === 'global' ? 'global' : 'scoped')
+          : _.provider === PROVIDER.Global ? PROVIDER.Global : PROVIDER.Scoped)
         : undefined
 
       return new this({
         id: _.id,
         title: _.title,
         profile: _.profile ??　'default',
-        source: _.source,
-        agent: _.agent,
+        source: _.source as SessionSource,
+        agent: _.agent as SessionAgent,
         agentSessionId: _.agent_native_session_id,
         agentNativeSessionId: _.agent_native_session_id,
         codingAgentMode,
@@ -150,7 +203,7 @@ export class Session {
         createdAt: Math.round(_.started_at * 1000),
         updatedAt: Math.round(((_.last_active || _.ended_at || _.started_at) ?? NaN) * 1000),
         model: _.model,
-        provider: _.provider || _.billing_provider,
+        provider: (_.provider || _.billing_provider) as SessionProvider,
         messageCount: _.message_count,
         messageTotal: _.message_count,
         loadedMessageCount: 0,
@@ -164,3 +217,4 @@ export class Session {
     })
   }
 }
+
