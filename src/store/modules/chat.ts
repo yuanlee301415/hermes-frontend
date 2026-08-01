@@ -79,9 +79,9 @@ export const useChatStore = defineStore('chatStore', () => {
   /** 会话列表 */
   const sessions = ref<Session[]>([])
   /** 当前活跃会话 ID */
-  const activeSessionId = ref<Session['id'] | undefined>()
+  const activeSessionId = ref<Session['id']>()
   /** 当前聚焦的消息 ID（用于滚动定位） */
-  const focusSessionId = ref<Session['id'] | undefined>()
+  const focusSessionId = ref<Message['id']>()
   /** 当前会话列表的 Profile 过滤器 */
   const sessionProfileFilter = ref<string|undefined>()
   /** 是否正在加载会话列表 */
@@ -220,7 +220,7 @@ export const useChatStore = defineStore('chatStore', () => {
    * @param sessionId 目标会话 ID
    * @param focusId 可选的聚焦消息 ID
    */
-  async function switchSession(sessionId: Session['id'], focusId?: Session['id']) {
+  async function switchSession(sessionId: Session['id'], focusId?: Message['id']) {
     // console.log('switchSession:', sessionId)
 
     clearThinkingObservationFor()
