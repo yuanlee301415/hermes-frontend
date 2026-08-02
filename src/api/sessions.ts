@@ -1,3 +1,8 @@
+/*
+* 会话 API
+* - 会话列表
+* - 会话上下文长度
+* */
 import { request } from './client.ts'
 
 export interface SessionSummary {
@@ -44,6 +49,7 @@ export interface HermesMessage {
   reasoning: string | null
 }
 
+// 获取：会话列表
 export async function getSessionsApi(source?: string, limit?: number, profile?: string): Promise<SessionSummary[]> {
   const params = new URLSearchParams()
   if (source) params.set('source', source)
@@ -54,4 +60,15 @@ export async function getSessionsApi(source?: string, limit?: number, profile?: 
     method: 'get'
   })
   return res.sessions
+}
+
+// 获取：会话上下文长度
+export async function getContextLengthApi(profile?: string, provider?: string, model?: string): Promise<number> {
+  const params = new URLSearchParams()
+  if (profile) params.set('profile', profile)
+  if (provider) params.set('provider', provider)
+  if (model) params.set('model', model)
+  const query = params.toString()
+  const res = await request<{ context_length: number }>(`api/hermes/sessions/context-length${query ? `?${query}` : ''}`)
+  return res.context_length
 }
