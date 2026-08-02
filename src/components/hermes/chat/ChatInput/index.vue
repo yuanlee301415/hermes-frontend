@@ -1,6 +1,16 @@
 <!--
-对话输入框
-- 选择文件（暂缓）
+对话输入框（v1@2026年8月2日）
+- 发送消息
+- 停止输出
+- 上下文使用统计
+
+Todo:
+- [x] 选择文件（暂缓）
+- [x] 文件预览（暂缓）
+- [x] 语音播放（暂缓）
+- [x] 语音输入（暂缓）
+- [ ] Slash 命令
+- [ ] 草稿
 -->
 <script setup lang="ts">
 import { Send } from '@vicons/tabler'
@@ -82,7 +92,6 @@ watch(() => [
   { flush: 'post' }
 )
 
-// Todo: 监听输入文本变化，自动保存草稿
 
 /**
  * 加载上下文长度（带缓存和去重）
@@ -169,7 +178,6 @@ function handeEnter(evt: KeyboardEvent) {
   <div class="chat-input-area">
     <n-flex class="input-top-bar" align="center" :size="8">
       <!--Todo: 推理强度-->
-      <!--Todo: 播放语音-->
       <!--Todo: 显示/隐藏工具调用-->
 
       <template v-if="totalTokens > 0">
