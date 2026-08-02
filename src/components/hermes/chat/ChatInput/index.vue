@@ -12,6 +12,12 @@ const chatStore = useChatStore()
 const inputText = ref('')
 const attachments = ref<Attachment[]>([])
 
+/**
+ * 是否可以发送消息
+ * 条件：输入框有非空白文本 或 有附件
+ */
+const canSend = computed(() => inputText.value.trim() || attachments.value.length > 0)
+
 function handeSend() {
   const text = inputText.value.trim()
   if (!text && !attachments.value.length) return
@@ -39,11 +45,13 @@ function handeEnter(evt: KeyboardEvent) {
       }"
       type="textarea"
       placeholder="输入消息... (Enter 发送，Shift+Enter 换行)"
-      clearable
       @keydown.enter="handeEnter"
     >
       <template #suffix>
-        <n-button size="small" type="primary" @click="handeSend">
+        <n-button v-if="chatStore.isStreaming" size="small" type="error" style="margin-right: 8px;" @click="chatStore.stopStreaming()">
+          停止
+        </n-button>
+        <n-button :disabled="!canSend" size="small" type="primary" @click="handeSend">
           <template #icon><Send/></template>
           发送
         </n-button>

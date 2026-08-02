@@ -373,6 +373,13 @@ export function connectChatRun(requestedProfile?: string): Socket {
   return chatRunSocket
 }
 
+/**
+ * 获取当前的聊天运行 Socket 连接实例
+ * @returns Socket 连接实例或 null
+ */
+export function getChatRunSocket(): Socket | null {
+  return chatRunSocket
+}
 
 /**
  * 通过 Socket.IO 启动聊天运行并流式接收事件

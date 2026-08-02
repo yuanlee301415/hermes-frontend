@@ -20,7 +20,7 @@
  */
 import { defineStore } from 'pinia'
 import { getSessionsApi, type HermesMessage } from '@/api/sessions.ts'
-import { resumeSession, startRunViaSocket, type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload } from '@/api/chat.ts'
+import { resumeSession, startRunViaSocket, getChatRunSocket, type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload } from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
 import { Message, Attachment } from '@/models/Message.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
@@ -64,6 +64,36 @@ type AbortState = {
   error?: string
 }
 
+/**
+ * 待审批请求接口 - 工具执行权限请求
+ *
+ * 当 AI 需要执行敏感操作（如写入内存）时，会向用户发送审批请求
+ */
+export interface PendingApproval {
+  sessionId: Session['id'] // 会话 ID
+  approvalId: string // 审批 ID
+  command: string // 请求执行的命令
+  description: string // 请求描述
+  choices: Array<'once' | 'session' | 'always' | 'deny'> // 用户可选的审批选项
+  allowPermanent: boolean // 是否允许永久授权（always）
+  isMemoryWrite: boolean // 是否为内存写入操作
+  requestedAt: number // 请求时间戳
+}
+
+/**
+ * 待澄清请求接口 - AI 的追问
+ *
+ * 当 AI 需要更多信息才能继续回答时，会发送澄清请求
+ */
+export interface PendingClarify {
+  sessionId: Session['id'] // 会话 ID
+  clarifyId: string // 澄清请求 ID
+  question: string // 追问问题
+  choices: string[] | null // 可选答案列表（null 表示自由输入）
+  timeoutMs: number // 超时时间（毫秒）
+  requestedAt: number // 请求时间戳
+}
+
 const DEFAULT_PROFILE_NAME = 'default'
 
 // localStorage 键名常量
@@ -94,12 +124,10 @@ export const useChatStore = defineStore('chatStore', () => {
   const activeSession = ref<Session|null>(null)
   /** 当前活跃会话的消息列表 */
   const messages = computed<Message[]>(() => activeSession.value?.messages || [])
-  /** 中断状态 */
-  const abortState = ref<AbortState | null>(null)
+
 
   /**
    * 会话 ID → 压缩状态映射
-   *
    * 压缩状态按会话隔离，因为 socket 可以在后台会话保持连接的同时另一个聊天处于活跃状态
    */
   const compressStates = ref<Map<Session['id'], CompressionState>>(new Map())
@@ -119,6 +147,12 @@ export const useChatStore = defineStore('chatStore', () => {
   /** 会话 ID → 已排队但尚未在对话中显示的用户消息 */
   const queuedUserMessages = ref<Map<Session['id'], Message[]>>(new Map())
 
+  /** 会话 ID → 待审批请求 */
+  const pendingApprovals = ref<Map<Session['id'], PendingApproval>>(new Map())
+
+  /** 会话 ID → 待澄清请求 */
+  const pendingClarifies = ref<Map<Session['id'], PendingClarify>>(new Map())
+
   /** 是否正在流式传输（客户端或服务器有活跃运行） */
   const isStreaming = computed(() => {
     const sid = activeSessionId.value
@@ -128,6 +162,12 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /** 是否有活跃运行（与 isStreaming 等价） */
   const isRunActive = computed(() => isStreaming.value)
+
+  /** 中断状态 */
+  const abortState = ref<AbortState | null>(null)
+
+  /** 是否正在中断 */
+  const isAborting = computed(() => abortState.value?.aborting === true)
 
 
   /*--------------------常量--------------------*/
@@ -1775,6 +1815,60 @@ export const useChatStore = defineStore('chatStore', () => {
     }
   }
 
+  /**
+   * 清除会话的所有待处理交互（审批和澄清）
+   * @param sid 会话 ID
+   */
+  function clearPendingInteractions(sid: Session['id']) {
+    let changed = false
+    if (pendingApprovals.value.has(sid)) {
+      pendingApprovals.value.delete(sid)
+      changed = true
+    }
+    if (pendingClarifies.value.has(sid)) {
+      pendingClarifies.value.delete(sid)
+      changed = true
+    }
+    if (changed) {
+      pendingApprovals.value = new Map(pendingApprovals.value)
+      pendingClarifies.value = new Map(pendingClarifies.value)
+    }
+  }
+
+  /**
+   * 停止流式传输（中断当前运行）
+   */
+  function stopStreaming() {
+    const sid = activeSessionId.value
+    if (!sid) return
+    if (isAborting.value) return
+
+    // 清除待处理交互
+    clearPendingInteractions(sid)
+
+    // 通过流控制器中断
+    const ctrl = streamStates.value.get(sid)
+    if (ctrl) {
+      setAbortState({ aborting: true, synced: undefined })
+      ctrl.abort()
+      const last = getSessionMessages(sid).at(-1)
+      if (last?.isStreaming) {
+        updateMessage(sid, last.id, { isStreaming: false })
+      }
+      return
+    }
+
+    // 如果没有流控制器但服务器正在工作，直接发送中断事件
+    if (serverWorking.value.has(sid)) {
+      setAbortState({ aborting: true, synced: undefined })
+      getChatRunSocket()?.emit('abort', { session_id: sid })
+      const last = getSessionMessages(sid).at(-1)
+      if (last?.isStreaming) {
+        updateMessage(sid, last.id, { isStreaming: false })
+      }
+    }
+  }
+
   return {
     sessions,
     sessionsLoaded,
@@ -1786,6 +1880,9 @@ export const useChatStore = defineStore('chatStore', () => {
     sessionProfileFilter,
     loadSessions,
     switchSession,
-    sendMessage
+    sendMessage,
+    isStreaming,
+    isAborting,
+    stopStreaming
   }
 })
