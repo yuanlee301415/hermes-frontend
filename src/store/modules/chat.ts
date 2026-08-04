@@ -19,7 +19,7 @@
  * - 语音播放：支持消息自动语音合成
  */
 import { defineStore } from 'pinia'
-import { getSessionsApi, type HermesMessage } from '@/api/sessions.ts'
+import { getSessionsApi } from '@/api/sessions.ts'
 import { resumeSession, startRunViaSocket, getChatRunSocket, type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload } from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
 import { Message, Attachment } from '@/models/Message.ts'
@@ -28,10 +28,9 @@ import { useAppStore } from '@/store/modules/app.ts'
 import { uuid } from '@/utils/uuid.ts'
 import { detectThinkingBoundary } from '@/utils/thinking-parser.ts'
 import { ACTIVE_SESSION_KEY_PREFIX } from '@/constants/storage-keys.ts'
-import {
-  getItemBestEffort, removeItem, isQuotaExceededError, hasRuntimeToolPayload, runtimeToolPayloadOrUndefined,  runtimePayloadText, readFinishReason,
-  readRunMarker, getReplayRunMarker, resolveResumedAssistantState, errorMessageText, runtimeToolOutputHasError
-} from '../shared'
+import { hasRuntimeToolPayload, runtimeToolPayloadOrUndefined, mapHermesMessages, readRunMarker, getReplayRunMarker, resolveResumedAssistantState,
+  errorMessageText, runtimeToolOutputHasError, normalizeQueuedUserMessages } from '../shared/chat.ts'
+import { getItemBestEffort, removeItem, setItemBestEffort } from '../shared/storage.ts'
 
 /**
  * 压缩状态接口 - 会话上下文压缩的状态追踪
@@ -371,127 +370,6 @@ export const useChatStore = defineStore('chatStore', () => {
   }
 
   /**
-   * 将 Hermes 后端消息格式转换为客户端消息格式
-   *
-   * 主要处理：
-   * 1. 过滤掉没有显示内容的 assistant 消息（除非包含 tool_calls 元数据）
-   * 2. 构建工具调用名称和参数的映射表
-   * 3. 将 assistant 消息中的 tool_calls 转换为独立的 tool 消息
-   * 4. 将 tool 消息与对应的工具调用关联
-   * 5. 普通消息直接转换
-   *
-   * @param msgs Hermes 后端消息列表
-   * @returns 客户端消息列表
-   */
-  function mapHermesMessages(msgs: HermesMessage[]): Message[] {
-    // 过滤掉没有显示内容的 assistant 消息（除非包含 tool_calls 元数据，用于恢复历史时命名工具结果行）
-    const filteredMsgs = msgs.filter(msg => {
-      if (msg.role === Message.ROLE.Assistant) {
-        return ( msg.tool_calls?.length ?? 0) > 0 || !!runtimePayloadText(msg.content).trim()
-      }
-      return true
-    })
-
-    // 从包含 tool_calls 的 assistant 消息中构建工具名称和参数的映射表
-    const toolNameMap = new Map<string, string>()
-    const toolArgsMap = new Map<string, unknown>()
-
-    for (const msg of filteredMsgs) {
-      if (msg.role === Message.ROLE.Assistant && msg.tool_calls) {
-        for (const tc of msg.tool_calls) {
-          if (tc.id) {
-            if (tc.function?.name) toolNameMap.set(tc.id, tc.function.name)
-            if (hasRuntimeToolPayload(tc.function?.arguments)) toolArgsMap.set(tc.id, tc.function?.arguments)
-          }
-        }
-      }
-    }
-
-    const result: Message[] = []
-
-    for (const msg of filteredMsgs) {
-      // 跳过只包含 tool_calls 的 assistant 消息（无实际内容），为每个工具调用生成 tool.started 消息
-      if (msg.role === Message.ROLE.Assistant && msg.tool_calls?.length && !runtimePayloadText(msg.content).trim()) {
-        for (const tc of msg.tool_calls) {
-          result.push(new Message({
-            id: String(msg.id) + '_' + tc.id,
-            role: Message.ROLE.Tool,
-            content: '',
-            timestamp: Math.round(msg.timestamp * 1000),
-            toolName: tc.function?.name,
-            toolCallId: tc.id,
-            toolArgs: runtimeToolPayloadOrUndefined(tc.function?.arguments),
-            toolStatus: Message.TOOL_STATUS.Done,
-            finishReason: readFinishReason(msg),
-            runMarker: readRunMarker(msg)
-          }))
-        }
-        continue
-      }
-
-      // 工具结果消息处理
-      if (msg.role === Message.ROLE.Tool) {
-        const tcId = msg.tool_call_id ?? ''
-        const toolName = msg.tool_name || toolNameMap.get(tcId)
-        const toolArgs = toolArgsMap.get(tcId)
-
-        // 从内容中提取简短预览
-        let preview = ''
-        const contentText = runtimePayloadText(msg.content)
-        if (contentText) {
-          try {
-            const parsed = typeof msg.content === 'string' ? JSON.parse(contentText) : msg.content
-            preview = parsed?.url || parsed?.title || parsed?.preview || parsed?.summary || ''
-          } catch {
-            preview = contentText.slice(0, 80)
-          }
-        }
-
-        // 查找并移除上面生成的占位符工具消息
-        const placeholderIdx = result.findIndex(msg =>
-          msg.role === Message.ROLE.Tool
-          && msg.toolName === toolName
-          && !msg.toolResult
-          && msg.id.includes('_' + tcId)
-        )
-        if (placeholderIdx !== -1) {
-          result.splice(placeholderIdx, 1)
-        }
-
-        result.push(new Message({
-          id: String(msg.id),
-          role: Message.ROLE.Tool,
-          content: '',
-          timestamp: Math.round(msg.timestamp * 1000),
-          toolName,
-          toolArgs,
-          toolCallId: tcId,
-          toolPreview: preview,
-          toolResult: runtimeToolPayloadOrUndefined(msg.content),
-          toolStatus: Message.TOOL_STATUS.Done,
-          finishReason: readFinishReason(msg),
-          runMarker: readRunMarker(msg)
-        }))
-        continue
-      }
-
-      // 普通 user/assistant/command 消息处理
-      result.push(new Message({
-        id: String(msg.id),
-        role: msg.role,
-        content: msg.content,
-        timestamp: Math.round(msg.timestamp * 1000),
-        reasoning: msg.reasoning ?? undefined,
-        systemType: msg.role === Message.ROLE.Command ? Message.ROLE.Command : undefined,
-        finishReason: readFinishReason(msg),
-        runMarker: readRunMarker(msg)
-      }))
-    }
-
-    return result
-  }
-
-  /**
    * 清除当前活跃会话
    *
    * 重置所有相关状态，包括活跃会话、聚焦消息、中断状态、压缩状态，并清除本地存储
@@ -580,95 +458,6 @@ export const useChatStore = defineStore('chatStore', () => {
   }
 
   /**
-   * 规范化队列中的用户消息
-   *
-   * 将服务器返回的原始消息格式转换为客户端 Message 格式，
-   * 过滤掉无效消息（没有 ID 或内容为空）。
-   *
-   * @param rawMessages 原始消息数组
-   * @returns 规范化后的消息列表
-   */
-  function normalizeQueuedUserMessages(rawMessages: unknown): Message[] {
-    if (!Array.isArray(rawMessages)) return []
-
-    return rawMessages.flatMap(raw => {
-      const peer = raw as NonNullable<RunEvent['queued_messages']>[number]
-      const content = typeof peer.content === 'string' ? peer.content : ''
-      const mesageId = peer?.id ? String(peer.id) : ''
-      if (!mesageId || !content.trim()) return  []
-
-      const timestamp = typeof peer?.timestamp  === 'number'  && Number.isFinite(peer.timestamp) ? Math.round(peer.timestamp * 1000) : Date.now()
-      const role = peer?.role === Message.ROLE.Command ? Message.ROLE.Command : Message.ROLE.User
-
-      return [new Message({
-        id: mesageId,
-        role,
-        content,
-        timestamp,
-        queued: true,
-        systemType: role === Message.ROLE.Command ? Message.ROLE.Command : undefined
-      })]
-    })
-  }
-
-  /**
-   * 尽力设置 localStorage 项（自动处理配额超限）
-   *
-   * 如果设置失败且是配额超限，会尝试清理旧缓存后重试
-   * @param key 存储键名
-   * @param value 存储值
-   */
-  function setItemBestEffort(key: string, value: string) {
-    try {
-      localStorage.setItem(key, value)
-      return
-    } catch (e) {
-      if (!isQuotaExceededError(e)) return
-    }
-
-    // 配额超限，尝试清理旧缓存
-    recoverStorageQuota()
-
-    try {
-      localStorage.setItem(key, value)
-    } catch {}
-  }
-
-  /**
-   * 恢复 localStorage 配额
-   *
-   * 清理所有已废弃的旧缓存键，释放存储空间
-   */
-  function recoverStorageQuota(){
-    // 已完全废弃的缓存键前缀列表
-    const prefixes = [
-      'hermes_sessions_cache_v1_',
-      'hermes_session_msgs_v1_',
-      'hermes_session_pins_v1_',
-      'hermes_human_only_v1_',
-    ]
-    try {
-      const keysToRemove: string[] = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (!key) continue
-        // 保留当前使用的键
-        if (key === storageKey()) continue
-        // 删除废弃的键
-        if (prefixes.some(prefix => key.startsWith(prefix))) {
-          keysToRemove.push(key)
-        }
-      }
-      keysToRemove.forEach(key => removeItem(key))
-      if (keysToRemove.length > 0) {
-        console.log(`Recovered storage: cleared ${keysToRemove.length} old session cache entries`)
-      }
-    } catch {
-      // 忽略错误
-    }
-  }
-
-  /**
    * 创建新会话
    * - 创建一个本地会话对象并添加到会话列表头部
    * @param options 会话创建选项
@@ -701,7 +490,6 @@ export const useChatStore = defineStore('chatStore', () => {
     console.log('createSession:', { options, session })
     return session
   }
-
 
   /**
    * 判断会话是否处于活跃状态（正在流式传输或服务器报告工作中）
