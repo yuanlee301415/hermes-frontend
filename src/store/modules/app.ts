@@ -3,11 +3,10 @@
  * */
 import { defineStore } from 'pinia'
 import { hasApiKey } from '@/api/client.ts'
+import { ACTIVE_PROFILE_NAME_KEY, SIDEBAR_COLLAPSED_KEY } from '@/constants/storage-keys.ts'
 import { fetchAvailableModels, type AvailableModelsResponse, type AvailableModelGroup, type ProfileAvailableModels, type ModelVisibility } from '@/api/system.ts'
 
-const SIDEBAR_COLLAPSED_KEY = 'hermes_sidebar_collapsed'
 const MODELS_CACHE_TTL_MS = 30000
-const ACTIVE_PROFILE_STORAGE_KEY = 'hermes_active_profile_name'
 
 let modelsLoadPromise: Promise<void> | null = null
 let modelsLastRequestedAt = 0
@@ -34,7 +33,7 @@ export const useAppStore = defineStore('appStore', () => {
     modelVisibility.value = res.model_visibility || {}
     customModels.value = res.custom_models || {}
 
-    const activeProfileName = localStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY) || ''
+    const activeProfileName = localStorage.getItem(ACTIVE_PROFILE_NAME_KEY) || ''
     const activeProfileModels = activeProfileName
       ? profileModelGroups.value.find(entry => entry.profile === activeProfileName)
       : undefined

@@ -27,6 +27,7 @@ import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { useAppStore } from '@/store/modules/app.ts'
 import { uuid } from '@/utils/uuid.ts'
 import { detectThinkingBoundary } from '@/utils/thinking-parser.ts'
+import { ACTIVE_SESSION_KEY_PREFIX } from '@/constants/storage-keys.ts'
 import {
   getItemBestEffort, removeItem, isQuotaExceededError, hasRuntimeToolPayload, runtimeToolPayloadOrUndefined,  runtimePayloadText, readFinishReason,
   readRunMarker, getReplayRunMarker, resolveResumedAssistantState, errorMessageText, runtimeToolOutputHasError
@@ -95,12 +96,6 @@ export interface PendingClarify {
 }
 
 const DEFAULT_PROFILE_NAME = 'default'
-
-// localStorage 键名常量
-// 当前 profile 的活跃会话键名前缀
-const STORAGE_KEY_PREFIX = 'hermes_active_session_'
-// 旧版（无 profile 隔离）的活跃会话键名
-const LEGACY_STORAGE_KEY = 'hermes_active_session'
 
 export const useChatStore = defineStore('chatStore', () => {
   const profileStore = useProfilesStore()
@@ -223,8 +218,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
       // 按优先级选择目标会话
       const currentId = activeSessionId.value
-      const legacyActiveKey = legacyStorageKey()
-      const storedId = getItemBestEffort(storageKey()) || (legacyActiveKey ? getItemBestEffort(LEGACY_STORAGE_KEY) : null)
+      const storedId = getItemBestEffort(storageKey())
       const targetId = preferredSessionId && sessions.value.some(s => s.id === preferredSessionId)
         ? preferredSessionId
         : currentId && sessions.value.some(s => s.id === currentId)
@@ -267,11 +261,6 @@ export const useChatStore = defineStore('chatStore', () => {
     activeSessionId.value = sessionId
     focusSessionId.value = focusId
     setItemBestEffort(storageKey(), sessionId)
-
-    const legacyActiveKey = legacyStorageKey()
-    if (legacyActiveKey) {
-      removeItem(legacyActiveKey)
-    }
 
     activeSession.value = sessions.value.find(_ => _.id === sessionId) || null
 
@@ -562,12 +551,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /** 获取当前 profile 的活跃会话存储键名 */
   function storageKey(): string {
-    return STORAGE_KEY_PREFIX + getProfileName()
-  }
-
-  /** 获取旧版活跃会话存储键名（仅 default profile 有） */
-  function legacyStorageKey(): string | null {
-    return  getProfileName() === DEFAULT_PROFILE_NAME ? LEGACY_STORAGE_KEY : null
+    return ACTIVE_SESSION_KEY_PREFIX + getProfileName()
   }
 
   /**
@@ -669,7 +653,7 @@ export const useChatStore = defineStore('chatStore', () => {
         const key = localStorage.key(i)
         if (!key) continue
         // 保留当前使用的键
-        if (key === storageKey() || key === LEGACY_STORAGE_KEY) continue
+        if (key === storageKey()) continue
         // 删除废弃的键
         if (prefixes.some(prefix => key.startsWith(prefix))) {
           keysToRemove.push(key)

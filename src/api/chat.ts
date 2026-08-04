@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client'
+import { ACTIVE_PROFILE_NAME_KEY } from '@/constants/storage-keys.ts'
 import { getApiKey, getBaseUrlValue } from '@/api/client.ts'
 
 
@@ -312,7 +313,7 @@ export function connectChatRun(requestedProfile?: string): Socket {
   const token = getApiKey()
 
   // Get active profile form store
-  let profile = normalizedRequestedProfile || localStorage.getItem('hermes_active_profile_name') || DEFAULT_PROFILE_NAME
+  let profile = normalizedRequestedProfile || localStorage.getItem(ACTIVE_PROFILE_NAME_KEY) || DEFAULT_PROFILE_NAME
   chatRunSocketProfile = profile
 
   chatRunSocket = io(url + 'chat-run', {

@@ -2,7 +2,7 @@
 * 文件下载
 * */
 
-import { getActiveProfileName } from '@/utils/storage.ts'
+import { ACTIVE_PROFILE_NAME_KEY } from '@/constants/storage-keys.ts'
 import { getBaseUrlValue, getApiKey } from './client.ts'
 
 function safeDecodeURIComponent(value: string): string {
@@ -40,7 +40,7 @@ export function getDownloadUrl(filePath: string, fileName?: string): string {
     const decodedName = safeDecodeURIComponent(fileName)
     params.set('name', decodedName)
   }
-  const profileName = getActiveProfileName()
+  const profileName = localStorage.getItem(ACTIVE_PROFILE_NAME_KEY)
   if (profileName) params.set('profile', profileName)
   const token = getApiKey()
   if (token) params.set('token', token)
