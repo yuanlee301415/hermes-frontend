@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { CopyOutline } from '@vicons/ionicons5'
+import { CopyOutline, BuildOutline } from '@vicons/ionicons5'
+import { ChevronRight, ChevronDown } from '@vicons/tabler'
 import { Message } from '@/models/Message.ts'
 import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
 import { formatTime } from '@/utils/formatTime.ts'
 import MarkdownRender from './MarkdownRender/index.vue'
 import { parseThinking } from '@/utils/thinking-parser.ts'
 import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
+import { formatToolPayload, renderToolPayload } from '../shared/parse-tool.ts'
+import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../shared/highlight.ts'
+
+const TOOL_ARGS_PROPERTY_NAME: keyof Message = 'toolArgs'
+const TOOL_RESULT_PROPERTY_NAME: keyof Message = 'toolResult'
 
 const props = defineProps<{message: Message, highlight?: boolean, headingIdPrefix?: string}>()
 
@@ -56,19 +62,125 @@ const copyableContent = computed(() => {
   return content
 })
 
+// ========== 工具调用(Tool) ==========
+const toolExpanded = ref(false) // 工具调用详情展开状态（用于控制工具调用参数和结果的显示/隐藏切换）
+const toolArgsPayload = computed(() => formatToolPayload(props.message.toolArgs))
+const toolResultPayload = computed(() => formatToolPayload(props.message.toolResult, true))
+const hasToolDetails = computed(() => !!(toolArgsPayload.value.full || toolResultPayload.value.full))
+
+// 格式化后的工具参数（用于 UI 显示，可能被截断）
+const formattedToolArgs = computed(() => toolArgsPayload.value.display);
+
+// 格式化后的工具结果（用于 UI 显示，可能被截断）
+const formattedToolResult = computed(() => toolResultPayload.value.display);
+
+// 渲染后的工具参数（带语法高亮的代码块 HTML）
+const renderedToolArgs = computed(() => formattedToolArgs.value ? renderToolPayload(formattedToolArgs.value, toolArgsPayload.value.language) : '')
+
+// 渲染后的工具结果（带语法高亮的代码块 HTML）
+const renderedToolResult = computed(() => formattedToolResult.value ? renderToolPayload(formattedToolResult.value, toolResultPayload.value.language) : '')
+
+
+// 展开/收缩工具详情
+function handleToggleToolDetails() {
+  if (!hasToolDetails.value) return
+  toolExpanded.value = !toolExpanded.value
+}
+
+/**
+ * 处理工具详情区域的点击事件
+ * 支持复制工具参数和工具结果，以及代码块的复制
+ *
+ * @param event 鼠标事件
+ */
+async function handleToolDetailClick(event: MouseEvent) {
+  const target = event.target
+  // 非 HTMLElement 直接返回（如 SVG 元素）
+  if (!(target instanceof HTMLElement)) return
+
+  // 查找带有 data-copy-code 属性的复制按钮
+  const button = target.closest(`[data-${COPY_CODE_ATTR_NAME}]`)
+  if (!button) return
+
+  event.preventDefault()
+
+  // 获取复制源类型（tool-args 表示工具参数，tool-result 表示工具结果）
+  const source = button.closest<HTMLElement>('[data-copy-source]')?.dataset.copySource
+
+  // 复制工具参数（点击参数区域的复制按钮）
+  if (source === TOOL_ARGS_PROPERTY_NAME && toolArgsPayload.value.full) {
+    const ok = await copyTextToClipboard(toolArgsPayload.value.full)
+    if (ok) window.$message?.success('已复制')
+    else window.$message?.error('复制失败')
+    return
+  }
+
+  // 复制工具结果（点击结果区域的复制按钮）
+  if (source === TOOL_RESULT_PROPERTY_NAME && toolResultPayload.value) {
+    const ok = await copyTextToClipboard(toolResultPayload.value.full);
+    if (ok) window.$message?.success('已复制')
+    else window.$message?.error('复制失败')
+    return;
+  }
+
+  // 默认处理：代码块内的单行复制（由 highlight 模块处理）
+  const copyResult = await handleCodeBlockCopyClick(event)
+  if (copyResult) window.$message?.success('已复制')
+  else if (copyResult === false) window.$message?.error('复制失败')
+}
 </script>
 
 <template>
   <div class="message" :class="[message.role, {highlight}]" :id="`message-${message.id}`">
-    <!-- ================================ >>>[工具] ================================ -->
+
+    <!-- ================================ >>>[工具调用] ================================ -->
     <div v-if="message.role === Message.ROLE.Tool" class="msg-tool">
-      <!--Todo: 工具-->
-      <div class="tool-line"></div>
-      <div class="tool-details"></div>
+
+      <!-- 工具调用摘要行：显示工具名称、预览和状态，可点击展开详情 -->
+      <div class="tool-line" :class="{expandable: hasToolDetails}" @click="handleToggleToolDetails">
+
+        <!-- 展开/收起箭头图标（有详情时显示） -->
+        <n-icon v-if="hasToolDetails">
+          <transition name="fade">
+            <ChevronDown v-if="toolExpanded"/>
+            <ChevronRight v-else/>
+          </transition>
+        </n-icon>
+        <n-icon v-else><BuildOutline/></n-icon>
+
+        <!-- 工具名称 -->
+        <span class="tool-name">{{ message.toolName }}</span>
+
+        <!-- 工具调用预览（收起时显示） -->
+        <div v-if="message.toolPreview && !toolExpanded" class="tool-preview">{{ message.toolPreview }}</div>
+
+        <!-- 运行状态指示器（running 时显示旋转动画） -->
+        <div v-if="message.toolStatus === Message.TOOL_STATUS.Running" class="tool-spinner">
+          <n-spin size="small" :scale="0.5"></n-spin>
+        </div>
+
+        <!-- 错误状态标签（error 时显示红色错误标识） -->
+        <div v-if="message.toolStatus === Message.TOOL_STATUS.Error" class="tool-error-badge">错误</div>
+      </div>
+
+      <!-- 工具调用详情（展开时显示） -->
+      <div v-if="toolExpanded && hasToolDetails" class="tool-details" @click="handleToolDetailClick">
+        <!-- 工具参数部分 -->
+        <div v-if="formattedToolArgs" class="tool-detail-section" :data-copy-source="TOOL_ARGS_PROPERTY_NAME">
+          <div class="tool-detail-label">参数</div>
+          <div class="tool-detail-code-block" v-html="renderedToolArgs"></div>
+        </div>
+
+        <!-- 工具参数部分 -->
+        <div v-if="formattedToolResult" class="tool-detail-section" :data-copy-source="TOOL_RESULT_PROPERTY_NAME">
+          <div class="tool-detail-label">结果</div>
+          <div class="tool-detail-code-block" v-html="renderedToolResult"></div>
+        </div>
+      </div>
     </div>
     <!-- ================================ [工具]<<< ================================ -->
 
-    <!-- ================================ >>>[消息] ================================ -->
+    <!-- ================================ >>>[消息（用户/助手/系统/命令）] ================================ -->
     <template v-else>
       <div class="msg-body">
         <ProfileAvatar v-if="message.role === Message.ROLE.Assistant" class="msg-avatar"/>
@@ -173,7 +285,7 @@ const copyableContent = computed(() => {
         </div>
       </div>
     </template>
-    <!-- ================================ [消息]<<< ================================ -->
+    <!-- ================================ [消息（用户/助手/系统/命令）]<<< ================================ -->
   </div>
 
 

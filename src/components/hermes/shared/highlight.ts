@@ -48,6 +48,9 @@ const DIFF_PAYLOAD_FIELD_NAMES = new Set([
   'content',
 ])
 
+// HTML dataset 属性名: 'copy-code'
+export const COPY_CODE_ATTR_NAME = 'copy-code'
+
 /**
  * HTML 转义函数
  * 将字符串中的特殊字符转换为 HTML 实体，防止 XSS 攻击
@@ -100,7 +103,7 @@ function renderCodeBlockWrapper(
     ? ''
     : ` data-copy-text="${escapeHtml(rawCopyText)}"`
 
-  return `<pre class="${blockClasses}"${copyTextAttr}><div class="code-header">${languageLabelHtml}<button type="button" class="copy-btn" data-copy-code="true">${escapeHtml(copyLabel)}</button></div><code class="hljs language-${sanitizeLanguageClass(codeClassLanguage)}">${highlighted}</code></pre>`
+  return `<pre class="${blockClasses}"${copyTextAttr}><div class="code-header">${languageLabelHtml}<button type="button" class="copy-btn" data-${COPY_CODE_ATTR_NAME}="true">${escapeHtml(copyLabel)}</button></div><code class="hljs language-${sanitizeLanguageClass(codeClassLanguage)}">${highlighted}</code></pre>`
 }
 
 /**
@@ -548,7 +551,7 @@ export async function handleCodeBlockCopyClick(event: MouseEvent): Promise<boole
   const target = event.target
   if (!(target instanceof HTMLElement)) return null
 
-  const button = target.closest<HTMLElement>('[data-copy-code="true"]')
+  const button = target.closest<HTMLElement>(`[data-${COPY_CODE_ATTR_NAME}="true"]`)
   if (!button) return null
 
   event.preventDefault()
