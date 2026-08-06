@@ -149,7 +149,7 @@ export class Message {
   // 运行标记（用于恢复会话时追踪）
   runMarker?: string | null
 
-  constructor(_: Omit<Message, 'isCommandMessage' | 'isCommandError' | 'isStatusCommand' | 'isAgentError' | 'hasReasoningField' | 'hasAttachments'>) {
+  constructor(_: Message) {
     this.id = _.id
     this.role = _.role
     this.content = _.content
@@ -175,35 +175,4 @@ export class Message {
   static ROLE = ROLE
   static SYSTEM_TYPE = SYSTEM_TYPE
   static TOOL_STATUS = TOOL_STATUS
-
-  // 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
-  get isCommandMessage() {
-    return !!this.content && this.role === ROLE.Command && this.systemType === SYSTEM_TYPE.Command
-  }
-
-  // 是否为命令错误消息（command 角色且 systemType 为 error），用于展示命令执行失败
-  get isCommandError() {
-    return this.role === ROLE.Command && this.systemType === SYSTEM_TYPE.Error
-  }
-
-  // 是否为状态命令消息：命令消息且 commandAction 为 status，且不是 goal 类型
-  // 状态命令用于展示 Hermes Agent 的运行状态信息
-  get isStatusCommand() {
-    return !!this.content && this.isCommandMessage && this.commandAction === 'status'  && this.commandData?.type !== 'glob'
-  }
-
-  // 是否为助手错误消息（assistant 角色且 systemType 为 error），用于特殊的错误样式展示
-  get isAgentError() {
-    return this.role === ROLE.Assistant && this.systemType === SYSTEM_TYPE.Error
-  }
-
-  // 是否包含 reasoning 字段（来自事件/API 的思考文本）
-  get hasReasoningField() {
-    return !!this.reasoning
-  }
-
-  // 是否包含附件
-  get hasAttachments() {
-    return !!(this.attachments && this.attachments.length > 0)
-  }
 }

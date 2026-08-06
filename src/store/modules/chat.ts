@@ -1641,6 +1641,16 @@ export const useChatStore = defineStore('chatStore', () => {
     }
   }
 
+  /**
+   * 获取消息的思考观察数据
+   *
+   * @param msgId 消息 ID
+   * @returns 思考观察数据
+   */
+  function getThinkingObservation(msgId: Message['id']) {
+    return thinkingObservation.get(msgId)
+  }
+
   return {
     sessions,
     sessionsLoaded,
@@ -1655,6 +1665,7 @@ export const useChatStore = defineStore('chatStore', () => {
     sendMessage,
     isStreaming,
     isAborting,
-    stopStreaming
+    stopStreaming,
+    getThinkingObservation
   }
 })

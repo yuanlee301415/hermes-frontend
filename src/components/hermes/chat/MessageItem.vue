@@ -4,16 +4,21 @@ import { ChevronRight, ChevronDown } from '@vicons/tabler'
 import { Message } from '@/models/Message.ts'
 import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
 import { formatTime } from '@/utils/formatTime.ts'
+import { parseThinking, countThinkingChars } from '@/utils/thinking-parser.ts'
+import { useChatStore } from '@/store/modules/chat.ts'
+import { formatDuration } from '@/utils/format.ts'
 import MarkdownRender from './MarkdownRender/index.vue'
-import { parseThinking } from '@/utils/thinking-parser.ts'
 import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
 import { formatToolPayload, renderToolPayload } from '../shared/parse-tool.ts'
 import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../shared/highlight.ts'
+
 
 const TOOL_ARGS_PROPERTY_NAME: keyof Message = 'toolArgs'
 const TOOL_RESULT_PROPERTY_NAME: keyof Message = 'toolResult'
 
 const props = defineProps<{message: Message, highlight?: boolean, headingIdPrefix?: string}>()
+
+const chatStore = useChatStore()
 
 // ========== 内容块解析计算属性 ==========
 // 从消息内容字符串中解析 ContentBlock[] 数组
@@ -36,19 +41,56 @@ const displayText = computed(() => {
   return contentBlocks.value!.map(block => getBlockText(block)).filter(Boolean).join('\n')
 })
 
-// ========== 消息类型判断计算属性 ==========
-// 有效标题 ID 前缀：优先使用传入的 headingIdPrefix，否则使用消息 ID 作为前缀
-// 用于 Markdown 渲染时为标题生成唯一 ID，支持锚点跳转
-const effectiveHeadingIdPrefix = computed(() => props.headingIdPrefix ?? `msg-${props.message.id}`)
-
-
 // ========== 思考内容（Reasoning）相关 ==========
+const thinkingExpanded = ref(false)
+const nowTick = ref(Date.now())
+
 // 解析消息内容中的思考文本（<think> 标签）
 // 支持流式传输模式：当 isStreaming 为 true 时，允许未闭合的 <think> 标签
 const parsedThinking = computed(() => parseThinking(props.message.content ?? '', { streaming: !!props.message.isStreaming }))
 
+// 是否包含 reasoning 字段（来自事件/API 的思考文本）
+const hasReasoningField = computed(() => !!props.message.reasoning)
+
 // 判断消息是否包含思考内容（reasoning 字段或 <think> 标签任一存在即可）
-const hasThinking = computed(() => props.message.hasReasoningField || parsedThinking.value.hasThinking)
+const hasThinking = computed(() => hasReasoningField.value || parsedThinking.value.hasThinking)
+
+// 判断是否处于流式思考状态：
+// 条件1：消息正在流式传输
+// 条件2：存在未闭合的 <think> 标签，或 reasoning 有内容但正文尚未开始
+const thinkingStreamingNow = computed(() => {
+  if (!props.message.isStreaming) return false // 非流式消息直接返回 false
+  if (parsedThinking.value.pending !== null) return true // 存在未闭合的 <think> 标签（流式传输中）
+  if (hasReasoningField.value && !props.message.content) return true // reasoning 有内容但正文为空（表示正在思考，尚未生成回复正文）
+  return false
+})
+
+// 思考持续时间（毫秒）：从思考开始时间到结束时间（或当前时间，如果仍在流式传输）
+const thinkingDurationMs = computed(() => {
+  const ob = chatStore.getThinkingObservation(props.message.id)
+  if (!ob?.startedAt) return null
+  const startedAt = ob.startedAt
+  const end = ob?.endedAt ?? (props.message.isStreaming ? nowTick.value: startedAt)
+  return Math.max(0, end - startedAt)
+})
+
+// 思考内容的字符数统计：包含 reasoning 字段和解析出的 <think> 标签内容
+const thinkingCharCount = computed(() => {
+  let count = countThinkingChars(parsedThinking.value)
+  if (props.message.reasoning) count += props.message.reasoning.length
+  return count
+})
+
+// 完整的思考文本：合并 reasoning 字段和解析出的 <think> 标签内容
+// 拼接顺序：reasoning 字段 → 解析出的思考片段 → 未闭合的思考内容（流式传输中）
+const thinkingFullText = computed(() => {
+  const parts: string[] = []
+  if (props.message.reasoning) {
+    parts.push(props.message.reasoning)
+  }
+  parts.push(...parsedThinking.value.segments)
+  return parts.join('\n\n')
+})
 
 // ========== 复制功能相关 ==========
 // 可复制的消息内容：
@@ -80,12 +122,25 @@ const renderedToolArgs = computed(() => formattedToolArgs.value ? renderToolPayl
 // 渲染后的工具结果（带语法高亮的代码块 HTML）
 const renderedToolResult = computed(() => formattedToolResult.value ? renderToolPayload(formattedToolResult.value, toolResultPayload.value.language) : '')
 
+// 有效标题 ID 前缀：优先使用传入的 headingIdPrefix，否则使用消息 ID 作为前缀
+// 用于 Markdown 渲染时为标题生成唯一 ID，支持锚点跳转
+const effectiveHeadingIdPrefix = computed(() => props.headingIdPrefix ?? `msg-${props.message.id}`)
 
-// 展开/收缩工具详情
-function handleToggleToolDetails() {
-  if (!hasToolDetails.value) return
-  toolExpanded.value = !toolExpanded.value
-}
+
+// ========== 消息类型判断计算属性 ==========
+// 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
+const isCommandMessage = computed(() => !!props.message.content && props.message.role === Message.ROLE.Command && props.message.systemType === Message.SYSTEM_TYPE.Command)
+
+// 是否为命令错误消息（command 角色且 systemType 为 error），用于展示命令执行失败
+const isCommandError = computed(() => props.message.role === Message.ROLE.Command && props.message.systemType === Message.SYSTEM_TYPE.Error)
+
+// 是否为状态命令消息：命令消息且 commandAction 为 status，且不是 goal 类型
+// 状态命令用于展示 Hermes Agent 的运行状态信息
+const isStatusCommand = computed(() => !!props.message.content && isCommandMessage.value && props.message.commandAction === 'status'  && props.message.commandData?.type !== 'glob')
+
+// 是否为助手错误消息（assistant 角色且 systemType 为 error），用于特殊的错误样式展示
+const isAgentError = computed(() => props.message.role === Message.ROLE.Assistant && props.message.systemType === Message.SYSTEM_TYPE.Error)
+
 
 /**
  * 处理工具详情区域的点击事件
@@ -137,7 +192,7 @@ async function handleToolDetailClick(event: MouseEvent) {
     <div v-if="message.role === Message.ROLE.Tool" class="msg-tool">
 
       <!-- 工具调用摘要行：显示工具名称、预览和状态，可点击展开详情 -->
-      <div class="tool-line" :class="{expandable: hasToolDetails}" @click="handleToggleToolDetails">
+      <div class="tool-line" :class="{expandable: hasToolDetails}" @click="toolExpanded = !toolExpanded">
 
         <!-- 展开/收起箭头图标（有详情时显示） -->
         <n-icon v-if="hasToolDetails">
@@ -191,29 +246,59 @@ async function handleToolDetailClick(event: MouseEvent) {
             class="msg-bubble"
             :class="{
             system: message.role === Message.ROLE.System,
-            'agent-error': message.isAgentError,
-            command: message.isCommandMessage,
-            'command-error': message.isCommandError
+            'agent-error': isAgentError,
+            command: isCommandMessage,
+            'command-error': isCommandError
           }"
           >
 
             <!-- ======================== >>>[附件] ======================== -->
-            <div v-if="message.hasAttachments" class="msg-attachments">
-              <!--Todo: 附件-->
-            </div>
+            <div class="msg-attachments"><!--Todo: 附件--></div>
             <!-- ======================== [附件]<<< ======================== -->
 
             <!-- ======================== >>>[思考内容] ======================== -->
-            <div class="msg-thinking">
-              <!--Todo: 思考内容-->
-              <div v-if="hasThinking" class="thinking-block"></div>
+            <!-- 显示助手的思考过程（</think> 标签内的内容） -->
+            <div v-if="hasThinking" class="thinking-block">
+              <!-- 思考内容标题栏：点击可展开/收起 -->
+              <div class="thinking-header" @click="thinkingExpanded = !thinkingExpanded">
+                <!-- 思考内容标题栏：点击可展开/收起 -->
+                <n-icon>
+                  <transition name="fade">
+                    <ChevronDown v-if="thinkingExpanded"/>
+                    <ChevronRight v-else/>
+                  </transition>
+                </n-icon>
 
-              <MarkdownRender
-                v-if="parsedThinking.body && message.role === Message.ROLE.Assistant"
-                :content="message.content"
-                :heading-id-prefix="headingIdPrefix"
-              />
+                <span class="thinking-icon">💭</span>
+
+                <span class="thinking-label">
+                    {{ thinkingStreamingNow ? '思考中…' : '思考过程' }}
+                  </span>
+
+                <!-- 思考时长 -->
+                <span v-if="thinkingDurationMs != null && thinkingDurationMs > 0" class="thinking-meta">
+                    · 已观察 {{formatDuration(thinkingDurationMs)}}
+                  </span>
+
+                <!-- 思考内容字符数 -->
+                <span class="thinking-meta">
+                    · {{thinkingCharCount}} 字
+                  </span>
+              </div>
+
+              <!-- 思考内容正文（展开时显示） -->
+              <div v-if="thinkingExpanded" class="thinking-body">
+                <MarkdownRender :content="thinkingFullText"/>
+              </div>
             </div>
+
+            <!-- ========== 解析后的思考内容（直接显示） ========== -->
+            <!-- 当思考内容在助手消息中且不需要单独展开时，直接渲染 -->
+            <MarkdownRender
+              v-if="parsedThinking.body && message.role === Message.ROLE.Assistant"
+              :content="parsedThinking.body"
+              :heading-id-prefix="effectiveHeadingIdPrefix"
+            />
             <!-- ======================== [思考内容]<<< ======================== -->
 
             <!-- ======================== >>>[用户消息] ======================== -->
@@ -235,11 +320,13 @@ async function handleToolDetailClick(event: MouseEvent) {
 
 
             <!-- ======================== >>>[AI 消息] ======================== -->
+            <!-- 当没有解析的思考内容时，直接渲染助手回复内容 -->
             <template v-if="message.role === Message.ROLE.Assistant">
               <MarkdownRender
                 v-if="message.content && !parsedThinking.body"
                 :content="message.content"
                 :heading-id-prefix="effectiveHeadingIdPrefix"
+                style="border: 1px dashed red"
               />
             </template>
             <!-- ======================== [AI 消息]<<< ======================== -->
@@ -247,19 +334,19 @@ async function handleToolDetailClick(event: MouseEvent) {
 
             <!-- ======================== >>>[系统消息] ======================== -->
             <template v-if="message.role === Message.ROLE.System">
-              <MarkdownRender v-if="message.isCommandMessage" :content="message.content"/>
+              <MarkdownRender v-if="isCommandMessage" :content="message.content"/>
             </template>
             <!-- ======================== [系统消息]<<< ======================== -->
 
 
             <!-- ======================== >>>[命令消息] ======================== -->
             <!-- 状态命令：显示键值对 -->
-            <div v-if="message.isStatusCommand" class="command-result command-status">
+            <div v-if="isStatusCommand" class="command-result command-status">
               <!--Todo: 状态命令-->
             </div>
 
             <!-- 普通命令：显示命令执行结果 -->
-            <div v-if="message.isCommandMessage" class="command-result">
+            <div v-if="isCommandMessage" class="command-result">
               <!--Todo: 普通命令-->
             </div>
             <!-- ======================== [命令消息]<<< ======================== -->
