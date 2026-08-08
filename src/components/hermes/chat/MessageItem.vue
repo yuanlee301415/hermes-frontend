@@ -1,3 +1,15 @@
+<!--
+对话消息(@2026年8月8日)
+
+- 工具调用
+- 用户消息
+- AI 消息
+- 系统消息
+- 命令消息
+- 思考内容
+- 附件（暂缓）
+- 语音播放（暂缓）
+-->
 <script setup lang="ts">
 import { CopyOutline, BuildOutline } from '@vicons/ionicons5'
 import { ChevronRight, ChevronDown } from '@vicons/tabler'
@@ -21,9 +33,9 @@ const props = defineProps<{message: Message, highlight?: boolean, headingIdPrefi
 
 const chatStore = useChatStore()
 
-// ========== 内容块解析计算属性 ==========
+// ==================== 内容块解析计算属性 ====================
+
 // 从消息内容字符串中解析 ContentBlock[] 数组
-// 如果消息内容是标准 JSON 或遗留 Python 格式，返回解析后的数组；否则返回 null
 const contentBlocks = computed(() => parseContentBlocks(props.message.content ?? ''))
 
 // 判断消息内容是否为 ContentBlock[] 格式（多模态格式）
@@ -31,23 +43,20 @@ const contentBlocks = computed(() => parseContentBlocks(props.message.content ??
 const isContentBlockArray = computed(() => contentBlocks.value !== null)
 
 // 从 ContentBlock[] 中提取纯文本内容用于显示
-// 对于普通文本消息，直接返回原始内容；对于多模态消息，提取所有文本块并拼接
 const displayText = computed(() => {
   // 如果不是 ContentBlock[] 格式（普通文本消息），直接返回原始内容
-  if (!isContentBlockArray.value) {
-    return props.message.content ?? ''
-  }
+  if (!isContentBlockArray.value) return props.message.content ?? ''
 
   // 遍历所有内容块，提取文本并拼接
   return contentBlocks.value!.map(block => getBlockText(block)).filter(Boolean).join('\n')
 })
 
-// ========== 思考内容（Reasoning）相关 ==========
+// ==================== 思考内容（Reasoning）====================
+
 const thinkingExpanded = ref(false)
 const nowTick = ref(Date.now())
 
 // 解析消息内容中的思考文本（<think> 标签）
-// 支持流式传输模式：当 isStreaming 为 true 时，允许未闭合的 <think> 标签
 const parsedThinking = computed(() => parseThinking(props.message.content ?? '', { streaming: !!props.message.isStreaming }))
 
 // 是否包含 reasoning 字段（来自事件/API 的思考文本）
@@ -57,8 +66,6 @@ const hasReasoningField = computed(() => !!props.message.reasoning)
 const hasThinking = computed(() => hasReasoningField.value || parsedThinking.value.hasThinking)
 
 // 判断是否处于流式思考状态：
-// 条件1：消息正在流式传输
-// 条件2：存在未闭合的 <think> 标签，或 reasoning 有内容但正文尚未开始
 const thinkingStreamingNow = computed(() => {
   if (!props.message.isStreaming) return false // 非流式消息直接返回 false
   if (parsedThinking.value.pending !== null) return true // 存在未闭合的 <think> 标签（流式传输中）
@@ -93,7 +100,8 @@ const thinkingFullText = computed(() => {
   return parts.join('\n\n')
 })
 
-// ========== 复制功能相关 ==========
+// ==================== 复制功能 ====================
+
 // 可复制的消息内容：
 // - 工具调用消息（role 为 tool）不支持复制
 // - 空内容不支持复制
@@ -105,10 +113,18 @@ const copyableContent = computed(() => {
   return content
 })
 
-// ========== 工具调用(Tool) ==========
-const toolExpanded = ref(false) // 工具调用详情展开状态（用于控制工具调用参数和结果的显示/隐藏切换）
+// ==================== 工具调用(Tool) ====================
+// 工具调用详情展开状态（用于控制工具调用参数和结果的显示/隐藏切换）
+const toolExpanded = ref(false)
+
+// 工具调用参数的格式化负载：将 toolArgs 格式化为 ToolPayload 对象
 const toolArgsPayload = computed(() => formatToolPayload(props.message.toolArgs))
+
+// 工具调用结果的格式化负载：将 toolResult 格式化为 ToolPayload 对象（开启 diff 提取）
 const toolResultPayload = computed(() => formatToolPayload(props.message.toolResult, true))
+
+// 判断是否有工具调用详情（参数或结果任一非空）
+// 用于控制工具调用详情的展开/收起按钮显示
 const hasToolDetails = computed(() => !!(toolArgsPayload.value.full || toolResultPayload.value.full))
 
 // 格式化后的工具参数（用于 UI 显示，可能被截断）
@@ -128,7 +144,8 @@ const renderedToolResult = computed(() => formattedToolResult.value ? renderTool
 const effectiveHeadingIdPrefix = computed(() => props.headingIdPrefix ?? `msg-${props.message.id}`)
 
 
-// ========== 消息类型判断计算属性 ==========
+// ==================== 消息类型判断计算属性 ====================
+
 // 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
 const isCommandMessage = computed(() => !!props.message.content && props.message.role === Message.ROLE.Command && props.message.systemType === Message.SYSTEM_TYPE.Command)
 
@@ -143,6 +160,7 @@ const isStatusCommand = computed(() => !!props.message.content && isCommandMessa
 const isAgentError = computed(() => props.message.role === Message.ROLE.Assistant && props.message.systemType === Message.SYSTEM_TYPE.Error)
 
 // 状态命令消息的显示项列表：从 commandData 中提取运行状态信息
+// 包含：运行状态、消息来源、配置文件、模型名称、队列长度、运行 ID
 const statusItems = computed(() => {
   const data: Message['commandData'] = props.message.commandData || ({})
   return [
@@ -263,6 +281,7 @@ async function handleCopyMessage() {
     </div>
     <!-- ================================ [工具]<<< ================================ -->
 
+
     <!-- ================================ >>>[消息（用户/助手/系统/命令）] ================================ -->
     <template v-else>
       <div class="msg-body">
@@ -279,15 +298,11 @@ async function handleCopyMessage() {
             'command-error': isCommandError
           }"
           >
-
-            <!-- ======================== >>>[附件] ======================== -->
-            <div class="msg-attachments"><!--Todo: 附件--></div>
-            <!-- ======================== [附件]<<< ======================== -->
+            <!-- ======================== Todo:[附件] ======================== -->
 
             <!-- ======================== >>>[思考内容] ======================== -->
             <!-- 显示助手的思考过程（</think> 标签内的内容） -->
             <div v-if="hasThinking" class="thinking-block">
-              <!-- 思考内容标题栏：点击可展开/收起 -->
               <div class="thinking-header" @click="thinkingExpanded = !thinkingExpanded">
                 <!-- 思考内容标题栏：点击可展开/收起 -->
                 <n-icon>
@@ -314,11 +329,13 @@ async function handleCopyMessage() {
                   </span>
               </div>
 
+
               <!-- 思考内容正文（展开时显示） -->
               <div v-if="thinkingExpanded" class="thinking-body">
                 <MarkdownRender :content="thinkingFullText"/>
               </div>
             </div>
+
 
             <!-- ========== 解析后的思考内容（直接显示） ========== -->
             <!-- 当思考内容在助手消息中且不需要单独展开时，直接渲染 -->
@@ -329,13 +346,11 @@ async function handleCopyMessage() {
             />
             <!-- ======================== [思考内容]<<< ======================== -->
 
+
             <!-- ======================== >>>[用户消息] ======================== -->
             <template v-if="message.role === Message.ROLE.User">
               <template v-if="isContentBlockArray">
-                <!-- 用户消息中的文件附件（图片或普通文件） -->
-                <div class="msg-attachments">
-                  <!--Todo: 用户消息中的文件附件-->
-                </div>
+                <!-- Todo: 用户消息中的文件附件（图片或普通文件） -->
 
                 <!-- 用户消息文本内容 -->
                 <MarkdownRender v-if="displayText" :content="displayText"/>
@@ -382,6 +397,7 @@ async function handleCopyMessage() {
             </div>
             <!-- ======================== [命令消息]<<< ======================== -->
 
+
             <!-- ======================== >>>[流式传输指示器] ======================== -->
             <span v-if="message.isStreaming && !message.content" class="streaming-dots">
               <span></span><span></span><span></span>
@@ -390,6 +406,7 @@ async function handleCopyMessage() {
 
           </div>
           <!-- ============================ [消息气泡]<<< ============================ -->
+
 
           <!-- ============================ >>>[消息操作栏（复制/时间）] ============================ -->
           <div class="msg-meta">
@@ -408,12 +425,7 @@ async function handleCopyMessage() {
     <!-- ================================ [消息（用户/助手/系统/命令）]<<< ================================ -->
   </div>
 
-
-  <!-- ================================ >>>[图片预览弹窗] ================================ -->
-  <teleport to="body">
-    <div class="image-preview-overlay"></div>
-  </teleport>
-  <!-- ================================ [图片预览弹窗]<<< ================================ -->
+  <!-- ================================ Todo: [图片预览弹窗] ================================ -->
 </template>
 
 <style scoped lang="less">
