@@ -1,8 +1,6 @@
 /*
 * Todo:
 *  - [ ] 初始运行的逻辑
-* - [ ] 在addMessage中实例化 message
-* - [ ] 新增 findSession(sid: Session['id']) 方法
 * */
 
 /**
@@ -270,7 +268,7 @@ export const useChatStore = defineStore('chatStore', () => {
     focusSessionId.value = focusId
     setItemBestEffort(storageKey(), sessionId)
 
-    activeSession.value = sessions.value.find(_ => _.id === sessionId) || null
+    activeSession.value = getSession(sessionId) || null
 
     if (!activeSession.value) return
 
@@ -293,7 +291,7 @@ export const useChatStore = defineStore('chatStore', () => {
             return
           }
 
-          const target = sessions.value.find(s => s.id === sessionId)
+          const target = getSession(sessionId)
           if (!target) {
             resolve()
             return
@@ -530,9 +528,9 @@ export const useChatStore = defineStore('chatStore', () => {
    * @param msg 消息对象
    */
   function addMessage(sid: Session['id'], msg: Message) {
-    const sess = sessions.value.find(_ => _.id === sid)
-    if (sess) {
-      sess.messages.push(msg)
+    const target = getSession(sid)
+    if (target) {
+      target.messages.push(msg)
     }
   }
 
@@ -542,7 +540,7 @@ export const useChatStore = defineStore('chatStore', () => {
    * @param sid 会话 ID
    */
   function updateSessionTitle(sid: Session['id']) {
-    const target = sessions.value.find(_ => _.id === sid)
+    const target = getSession(sid)
     if (!target) return
     if (target.title) return
     const firstUser = target.messages.find(_ => _.role === Message.ROLE.User)
@@ -592,8 +590,7 @@ export const useChatStore = defineStore('chatStore', () => {
   function addAgentErrorMessage(sid: Session['id'], error?: unknown) {
     const message = errorMessageText(error)
     const content = message ? `Error: ${message}` : 'Run failed'
-    const msgs = getSessionMessages(sid)
-    const last = msgs.at(-1)
+    const last = getSessionMessages(sid).at(-1)
 
     if (last?.isStreaming) {
       updateMessage(sid, last.id, {
@@ -636,8 +633,7 @@ export const useChatStore = defineStore('chatStore', () => {
     const text = String((evt as any).text || (evt as any).message || '').trim()
     if (!text) return
 
-    const msgs = getSessionMessages(sid)
-    const last = msgs.at(-1)
+    const last = getSessionMessages(sid).at(-1)
     const commandData = { ...(evt as any) }
 
     // 如果最后一条消息已经是 agent.event，更新它
@@ -659,7 +655,7 @@ export const useChatStore = defineStore('chatStore', () => {
    * @returns 消息列表（空数组如果会话不存在）
    */
   function getSessionMessages(sid: Session['id']): Message[] {
-    const sess = sessions.value.find(_ => _.id === sid)
+    const sess = getSession(sid)
     return sess?.messages || []
   }
 
@@ -672,7 +668,7 @@ export const useChatStore = defineStore('chatStore', () => {
    * @param update 要更新的属性
    */
   function updateMessage(sid: Session['id'], msgId: Message['id'], update: Partial<Message>) {
-    const sess = sessions.value.find(_ => _.id === sid)
+    const sess = getSession(sid)
     if (!sess) return
     const idx = sess.messages.findIndex(_ => _.id === msgId)
     if (idx === -1) return
@@ -686,7 +682,7 @@ export const useChatStore = defineStore('chatStore', () => {
    * @param sid 会话 ID
    */
   function clearAgentEventMessages(sid: Session['id']) {
-    const sess = sessions.value.find(_ => _.id === sid)
+    const sess = getSession(sid)
     if (!sess) return
     sess.messages = sess.messages.filter(_ => _.commandAction !== 'agent.event')
   }
@@ -932,7 +928,7 @@ export const useChatStore = defineStore('chatStore', () => {
       const applyReconnectResume = (data: ResumeSessionPayload) => {
         console.log('applyReconnectResume')
         if (data.session_id !== sid) return
-        const target = sessions.value.find(_ => _.id === sid)
+        const target = getSession(sid)
         if (!target) return
 
         // 更新服务器工作状态
@@ -1177,7 +1173,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
               // 更新上下文 token 计数
               if (evt.contextTokens != undefined) {
-                const  target = sessions.value.find(_ => _.id === sid)
+                const  target = getSession(sid)
                 if (target) {
                   target.contextTokens = evt.contextTokens
                 }
@@ -1230,8 +1226,7 @@ export const useChatStore = defineStore('chatStore', () => {
             case 'reasoning.available': {
               // 推理可用：标记推理结束（上游发送的是预览内容，不是真正的推理）
               // 只作为"思考结束"信号，停止时长计数器
-              const msgs = getSessionMessages(sid)
-              const last = msgs.at(-1)
+              const last = getSessionMessages(sid).at(-1)
               if (last?.role === Message.ROLE.Assistant && last.isStreaming) {
                 // 只有当 reasoning.delta 事件曾经启动过计时，才标记结束；
                 // 否则（上游未转发 delta，只发这一次 available）不显示时长。
@@ -1355,7 +1350,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
               // 更新服务器计算的 token 使用量
               if (evt.inputTokens != null) {
-                const target = sessions.value.find(_ => _.id === sid)
+                const target = getSession(sid)
                 if (target) {
                   target.inputTokens = evt.inputTokens
                   target.outputTokens = evt.outputTokens
@@ -1466,7 +1461,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
               // 更新 token 使用量
               if (evt.inputTokens != undefined) {
-                const target = sessions.value.find(_ => _.id === sid)
+                const target = getSession(sid)
                 if (target) {
                   target.inputTokens = evt.inputTokens
                   target.outputTokens = evt.outputTokens
@@ -1497,7 +1492,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
             case 'usage.updated': {
               // 使用量更新：更新 token 计数
-              const target = sessions.value.find(_ => _.id === sid)
+              const target = getSession(sid)
               if (target) {
                 target.inputTokens = evt.inputTokens
                 target.outputTokens = evt.outputTokens
@@ -1534,8 +1529,7 @@ export const useChatStore = defineStore('chatStore', () => {
         },
         // onDone 回调：流正常结束
         () => {
-          const msgs = getSessionMessages(sid)
-          const last = msgs.at(-1)
+          const last = getSessionMessages(sid).at(-1)
           if (last?.isStreaming) {
             updateMessage(sid, last.id, { isStreaming: false })
           }
@@ -1695,7 +1689,7 @@ export const useChatStore = defineStore('chatStore', () => {
     if (seenSessionCommandEvents.has(evt)) return
     seenSessionCommandEvents.add(evt)
 
-    const target = sessions.value.find(_ => _.id === sid)
+    const target = getSession(sid)
     const action = evt.action
     // const command = String(evt.command || '').toLowerCase()
 
@@ -1728,6 +1722,15 @@ export const useChatStore = defineStore('chatStore', () => {
         commandData: { ...evt }
       }))
     }
+  }
+
+  /**
+   * 获取指定会话
+   * @param sid 会话 ID
+   * @returns 会话对象
+   */
+  function getSession(sid: Session['id']) {
+    return sessions.value.find(_ => _.id === sid)
   }
 
   /**
