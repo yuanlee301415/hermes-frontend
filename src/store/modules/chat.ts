@@ -1,6 +1,8 @@
 /*
 * Todo:
 *  - [ ] 初始运行的逻辑
+* - [ ] 在addMessage中实例化 message
+* - [ ] 新增 findSession(sid: Session['id']) 方法
 * */
 
 /**
@@ -20,7 +22,7 @@
  */
 import { defineStore } from 'pinia'
 import { getSessionsApi } from '@/api/sessions.ts'
-import { resumeSession, startRunViaSocket, getChatRunSocket, type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload } from '@/api/chat.ts'
+import { resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload } from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
 import { Message, Attachment } from '@/models/Message.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
@@ -164,19 +166,26 @@ export const useChatStore = defineStore('chatStore', () => {
   const isAborting = computed(() => abortState.value?.aborting === true)
 
 
-  /*--------------------常量--------------------*/
+  // ========== 内部状态 ==========
+
+  /** 已处理过的会话命令事件集合（防止重复处理） */
+  const seenSessionCommandEvents = new WeakSet<RunEvent>()
+
   // 活跃流式传输期间 <think> 边界的临时观察。
   // 不持久化；会话切换时清除。
   const thinkingObservation = new Map<string, {startedAt?: number, endedAt?: number}>
 
   /*
   * Todo: 初始运行的逻辑
-  *  - [ ] 注册全局会话命令处理器
   *  - [ ] 注册会话标题更新处理器
   *  - [ ] 标签页可见性
   *  - [ ] 轻度后台轮询用于会话列表实时同步
   *  - [ ] 当会话从服务器新获取时
   * */
+
+  // 注册全局会话命令处理器
+  onSessionCommand(handleGlobalSessionCommand)
+
 
   /**
    * 加载会话列表
@@ -1134,9 +1143,9 @@ export const useChatStore = defineStore('chatStore', () => {
               console.warn('Todo: run.queued')
               break
 
-            // Todo: session.command
             case 'session.command':
-              console.warn('Todo: session.command')
+              // 会话命令：处理命令事件（如重命名会话）
+              handleSessionCommandEvent(evt)
               break
 
             // Todo: agent.event
@@ -1649,6 +1658,89 @@ export const useChatStore = defineStore('chatStore', () => {
    */
   function getThinkingObservation(msgId: Message['id']) {
     return thinkingObservation.get(msgId)
+  }
+
+  /**
+   * 处理全局会话命令
+   * @param evt 运行事件
+   */
+  function handleGlobalSessionCommand(evt: RunEvent) {
+    const sid = evt.session_id
+    if (!sid || activeSessionId.value !== sid || !activeSession.value) return
+    const shouldAttachToStartedRun = evt.started === true && evt.terminal === false
+    handleSessionCommandEvent(evt)
+    // 如果是已启动的运行，恢复监听
+    if (shouldAttachToStartedRun) {
+      serverWorking.value.add(sid)
+      resumeServerWorkingRun(sid, true)
+    }
+  }
+
+  /**
+   * 处理会话命令事件
+   *
+   * 支持的命令类型：
+   * - clear: 清空消息历史
+   * - title: 更新会话标题
+   * - usage: 更新 token 使用情况
+   * - destroy: 销毁会话
+   *
+   * @param evt 运行事件
+   */
+  function handleSessionCommandEvent(evt: RunEvent) {
+    const sid = evt.session_id
+    if (!sid) return
+
+    // 使用 WeakSet 防止重复处理相同事件
+    if (seenSessionCommandEvents.has(evt)) return
+    seenSessionCommandEvents.add(evt)
+
+    const target = sessions.value.find(_ => _.id === sid)
+    const action = evt.action
+    // const command = String(evt.command || '').toLowerCase()
+
+    if (evt.started === true && evt.terminal === false) {
+      serverWorking.value.add(sid)
+    }
+
+    // Todo: 清空命令处理
+    // Todo: 标题更新命令处理
+    // Todo: 销毁命令处理
+
+    // 使用量更新命令处理
+    if (action === 'usage' && target) {
+      target.inputTokens = evt.inputTokens
+      target.outputTokens = evt.outputTokens
+      target.contextTokens = evt.contextTokens ?? target.contextTokens
+    }
+
+    // 添加命令消息（如果有消息内容）
+    const message = String(evt.message || '')
+    // console.log('handleSessionCommandEvent:', { target, action, command, evt, message })
+    if (message) {
+      addMessage(sid, new Message({
+        id: uuid(),
+        role: Message.ROLE.Command,
+        content: message,
+        timestamp: Date.now(),
+        systemType: evt.ok === true ? Message.SYSTEM_TYPE.Command : Message.SYSTEM_TYPE.Error,
+        commandAction: action,
+        commandData: { ...evt }
+      }))
+    }
+  }
+
+  /**
+   * 页面刷新后恢复正在进行的运行
+   *
+   * 通过 Socket.IO 发送 'resume' 事件加入服务器的会话房间，
+   * 然后设置事件监听器接收持续的事件。
+   *
+   * @param sid 会话 ID
+   * @param force 是否强制恢复（即使服务器没有报告活跃运行）
+   */
+  function resumeServerWorkingRun(sid: Session['id'], force = false) {
+    console.error('Todo: resumeServerWorkingRun:', sid, force)
   }
 
   return {

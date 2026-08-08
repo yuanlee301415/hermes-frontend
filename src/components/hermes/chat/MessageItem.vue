@@ -141,6 +141,18 @@ const isStatusCommand = computed(() => !!props.message.content && isCommandMessa
 // 是否为助手错误消息（assistant 角色且 systemType 为 error），用于特殊的错误样式展示
 const isAgentError = computed(() => props.message.role === Message.ROLE.Assistant && props.message.systemType === Message.SYSTEM_TYPE.Error)
 
+// 状态命令消息的显示项列表：从 commandData 中提取运行状态信息
+const statusItems = computed(() => {
+  const data: Message['commandData'] = props.message.commandData || ({})
+  return [
+    { key: 'status', value: data.isWorking ? 'running' : 'idle' },
+    { key: 'source', value: data.source },
+    { key: 'profile', value: data.profile },
+    { key: 'model', value: data.model ?? '-'},
+    { key: 'queueLength', value: data.queueLength ?? 0 },
+    { key: 'runId', value: data.runId ?? '-'},
+  ]
+})
 
 /**
  * 处理工具详情区域的点击事件
@@ -321,33 +333,36 @@ async function handleToolDetailClick(event: MouseEvent) {
 
             <!-- ======================== >>>[AI 消息] ======================== -->
             <!-- 当没有解析的思考内容时，直接渲染助手回复内容 -->
-            <template v-if="message.role === Message.ROLE.Assistant">
-              <MarkdownRender
-                v-if="message.content && !parsedThinking.body"
-                :content="message.content"
-                :heading-id-prefix="effectiveHeadingIdPrefix"
-                style="border: 1px dashed red"
-              />
-            </template>
+            <MarkdownRender
+              v-if="message.role === Message.ROLE.Assistant && message.content && !parsedThinking.body"
+              :content="message.content"
+              :heading-id-prefix="effectiveHeadingIdPrefix"
+              style="border: 1px dashed red"
+            />
             <!-- ======================== [AI 消息]<<< ======================== -->
 
 
             <!-- ======================== >>>[系统消息] ======================== -->
-            <template v-if="message.role === Message.ROLE.System">
-              <MarkdownRender v-if="isCommandMessage" :content="message.content"/>
-            </template>
+            <MarkdownRender v-if="message.role === Message.ROLE.System && isCommandMessage" :content="message.content"/>
             <!-- ======================== [系统消息]<<< ======================== -->
 
 
             <!-- ======================== >>>[命令消息] ======================== -->
             <!-- 状态命令：显示键值对 -->
             <div v-if="isStatusCommand" class="command-result command-status">
-              <!--Todo: 状态命令-->
+              <div class="command-result-icon">/</div>
+              <div class="command-result-grid">
+                <span v-for="item of statusItems" :key="item.key" class="command-status-item">
+                  <span class="command-status-key">{{ item.key }}</span>
+                  <span class="command-status-value">{{ item.value }}</span>
+                </span>
+              </div>
             </div>
 
             <!-- 普通命令：显示命令执行结果 -->
-            <div v-if="isCommandMessage" class="command-result">
-              <!--Todo: 普通命令-->
+            <div v-else-if="isCommandMessage && message.content" class="command-result">
+              <span class="command-result-icon">/</span>
+              <MarkdownRender :content="message.content" />
             </div>
             <!-- ======================== [命令消息]<<< ======================== -->
 

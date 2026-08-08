@@ -4,6 +4,11 @@
   position: relative;
   min-width: 0;
   max-width: 100%;
+  &:hover {
+    .msg-meta {
+      opacity: 1!important;
+    }
+  }
 
   /*msg-tool*/
   .msg-tool {
@@ -99,7 +104,7 @@
         min-width: 0;
         max-width: 100%;
         position: relative;
-
+        border-radius: 10px;
         .msg-attachments {
 
         }
@@ -140,10 +145,62 @@
           }
         }
         .command-result {
-
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          min-width: 0;
+          :deep(.markdown-body) {
+            min-width: 0;
+          }
+          :deep(.markdown-body p) {
+            margin: 0;
+          }
+          .command-result-icon {
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(var(--accent-primary-rgb), 0.1);
+            color: var(--accent-primary);
+            font-family: var(--font-code);
+            font-size: 12px;
+            line-height: 1;
+          }
         }
         .command-status {
-
+          align-items: center;
+          .command-result-grid {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: thin;
+            .command-status-item {
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+              flex: 0 0 auto;
+              padding: 2px 7px;
+              border: 1px solid rgba(var(--accent-primary-rgb), 0.1);
+              border-radius: 999px;
+              background: rgba(var(--accent-primary-rgb), 0.035);
+              line-height: 1.4;
+              .command-status-key {
+                color: var(--text-muted);
+                font-size: 11px;
+              }
+              .command-status-value {
+                color: var(--text-primary);
+                font-family: var(--font-code);
+                font-size: 11px;
+              }
+            }
+          }
         }
       }
       /*msg-bubble End*/
@@ -210,9 +267,21 @@
   }
   /*message.assistant End*/
 
-  &:hover {
-    .msg-meta {
-      opacity: 1!important;
+  /*message.command*/
+  &.command {
+    align-items: flex-start;
+    .msg-body {
+      .msg-content {
+        .msg-bubble {
+          border: 1px solid rgba(var(--accent-primary-rgb), 0.12);
+          background-color: rgba(var(--accent-primary-rgb), 0.04);
+          color: var(--text-secondary);
+          max-width: min(100%, 960px);
+          padding: 8px 10px;
+        }
+      }
     }
   }
+  /*message.command End*/
+
 }

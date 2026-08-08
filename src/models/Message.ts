@@ -139,7 +139,19 @@ export class Message {
 
   // 命令附带数据
   commandData?: {
-    type: 'glob' | string
+    type?: 'glob' | string
+    // 运行状态
+    isWorking?: string
+    // 消息来源标识
+    source?: string
+    // 使用的模型名称
+    model?: string
+    // 当前使用的配置文件名称
+    profile?: string
+    // 当前运行 ID
+    runId?: string
+    // 任务队列长度
+    queueLength?: number
     [key: string]: unknown
   }
 

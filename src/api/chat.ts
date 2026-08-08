@@ -254,6 +254,9 @@ const sessionEventHandlers = new Map<string, {
   onClarifyResolved?: (event: RunEvent) => void
 }>()
 
+/** 全局会话命令处理器集合 */
+const sessionCommandHandlers = new Set<(event: RunEvent) => void>()
+
 /** 全局会话标题更新处理器集合 */
 const sessionTitleUpdatedHandlers = new Set<(event: RunEvent) => void>()
 
@@ -826,6 +829,19 @@ function globalUsageUpdatedHandler(event: RunEvent): void {
   sessionEventHandlers.get(sid)?.onUsageUpdated?.(event)
 }
 
+/**
+ * 全局 session.command 事件处理器
+ * 处理会话命令事件，同时通知会话特定处理器和全局处理器
+ */
+function globalSessionCommandHandler(event: RunEvent) {
+  const sid = event.session_id
+  if (!sid) return
+  sessionEventHandlers.get(sid)?.onSessionCommand?.(event)
+  for (const handler of sessionCommandHandlers) {
+    handler(event)
+  }
+}
+
 function globalApprovalRequestedHandler() {
   console.error('Todo:globalApprovalRequestedHandler')
 }
@@ -850,11 +866,19 @@ function globalAgentEventHandler() {
   console.error('Todo:globalAgentEventHandler')
 }
 
-function globalSessionCommandHandler() {
-  console.error('Todo:globalSessionCommandHandler')
-}
-
 function globalSubagentEventHandler() {
   console.error('Todo:globalSubagentEventHandler')
+}
+
+/**
+ * 订阅会话命令事件（全局）
+ * @param handler 事件处理函数
+ * @returns 取消订阅函数
+ */
+export function onSessionCommand(handler: (event: RunEvent) => void): () => void {
+  sessionCommandHandlers.add(handler)
+  return () => {
+    sessionCommandHandlers.delete(handler)
+  }
 }
 
