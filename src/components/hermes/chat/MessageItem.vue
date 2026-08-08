@@ -7,6 +7,7 @@ import { formatTime } from '@/utils/formatTime.ts'
 import { parseThinking, countThinkingChars } from '@/utils/thinking-parser.ts'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { formatDuration } from '@/utils/format.ts'
+import { copyToClipboard } from '@/utils/clipboard.ts'
 import MarkdownRender from './MarkdownRender/index.vue'
 import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
 import { formatToolPayload, renderToolPayload } from '../shared/parse-tool.ts'
@@ -195,6 +196,21 @@ async function handleToolDetailClick(event: MouseEvent) {
   if (copyResult) window.$message?.success('已复制')
   else if (copyResult === false) window.$message?.error('复制失败')
 }
+
+/**
+ * 复制整个消息气泡内容到剪贴板
+ * 复制成功显示成功提示，失败显示错误提示
+ */
+async function handleCopyMessage() {
+  const text = copyableContent.value
+  if (!text) return
+  const ok = await copyToClipboard(text)
+  if (ok) {
+    window.$message?.success('已复制')
+  } else {
+    window.$message?.error('复制失败')
+  }
+}
 </script>
 
 <template>
@@ -375,16 +391,16 @@ async function handleToolDetailClick(event: MouseEvent) {
           </div>
           <!-- ============================ [消息气泡]<<< ============================ -->
 
-          <!-- ============================ >>>[消息操作栏（语音播放/复制/时间）] ============================ -->
+          <!-- ============================ >>>[消息操作栏（复制/时间）] ============================ -->
           <div class="msg-meta">
-            <n-button v-if="copyableContent" quaternary size="tiny" title="复制消息">
+            <n-button v-if="copyableContent" quaternary size="tiny" title="复制消息" @click="handleCopyMessage">
               <template #icon>
                 <n-icon><CopyOutline/></n-icon>
               </template>
             </n-button>
             <time class="msg-time" :title="formatTime(message.timestamp)">{{ formatTime(message.timestamp, {time: true}) }}</time>
           </div>
-          <!-- ============================ [消息操作栏（语音播放/复制/时间）]<<< ============================ -->
+          <!-- ============================ [消息操作栏（复制/时间）]<<< ============================ -->
 
         </div>
       </div>
