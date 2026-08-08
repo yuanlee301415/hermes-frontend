@@ -1,6 +1,4 @@
 <!--
-Todo:
-- [ ] 会话创建时间
 -->
 <script setup lang="ts">
 import type { Session } from '@/models/Session.ts'
@@ -44,7 +42,7 @@ function handleClick(event: MouseEvent) {
         <n-text :title="session.model" depth="2" class="flex-1 overflow-hidden" style="max-width: 100px;">
           <n-ellipsis :tooltip="false">{{ session.model }}</n-ellipsis>
         </n-text>
-        <n-text depth="3">{{ session.createdAt }}</n-text>
+        <n-text depth="3">{{ session.createdDate }}</n-text>
       </n-flex>
 
       <n-flex class="session-profile" align="center" :size="5">
@@ -78,10 +76,6 @@ function handleClick(event: MouseEvent) {
 
     .session-agent, .session-meta, .session-profile {
       font-size: 12px;
-    }
-
-    .session-title {
-
     }
 
     .session-agent {

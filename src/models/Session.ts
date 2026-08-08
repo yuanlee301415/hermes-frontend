@@ -142,7 +142,7 @@ export class Session {
    */
   reasoningEffort?: string
 
-  constructor(_: Session) {
+  constructor(_: Omit<Session, 'createdDate'>) {
     this.id = _.id
     this.messages = []
     this.createdAt = _.createdAt
@@ -172,6 +172,11 @@ export class Session {
     this.lastActiveAt = _.lastActiveAt
     this.workspace = _.workspace
     this.reasoningEffort = _.reasoningEffort
+  }
+
+  // 创建日期（xx月/xx日）
+  get createdDate() {
+    return new Date(this.createdAt).toLocaleDateString('default', {month: 'short', day: 'numeric'})
   }
 
   static SOURCE = SOURCE
