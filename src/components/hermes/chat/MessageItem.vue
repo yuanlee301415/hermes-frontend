@@ -367,7 +367,9 @@ async function handleToolDetailClick(event: MouseEvent) {
             <!-- ======================== [命令消息]<<< ======================== -->
 
             <!-- ======================== >>>[流式传输指示器] ======================== -->
-            <span v-if="message.isStreaming && !message.content" class="streaming-dots"></span>
+            <span v-if="message.isStreaming && !message.content" class="streaming-dots">
+              <span></span><span></span><span></span>
+            </span>
             <!-- ======================== [流式传输指示器]<<< ======================== -->
 
           </div>

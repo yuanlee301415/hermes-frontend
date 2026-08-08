@@ -4,10 +4,17 @@
   position: relative;
   min-width: 0;
   max-width: 100%;
+
   &:hover {
     .msg-meta {
       opacity: 1!important;
     }
+  }
+
+  // 脉冲动画
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
   }
 
   /*msg-tool*/
@@ -202,6 +209,21 @@
             }
           }
         }
+        // 流式传输指示器
+        .streaming-dots {
+          display: flex;
+          gap: 4px;
+          padding: 4px 0;
+          span {
+            width: 6px;
+            height: 6px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            animation: pulse 1.4s infinite ease-in-out;
+            &:nth-child(2) { animation-delay: 0.2s; }
+            &:nth-child(3) { animation-delay: 0.4s; }
+          }
+        }
       }
       /*msg-bubble End*/
 
@@ -283,5 +305,4 @@
     }
   }
   /*message.command End*/
-
 }
