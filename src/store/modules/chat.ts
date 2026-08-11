@@ -2,8 +2,7 @@
 * Todo:
 *  - [ ] 初始运行的逻辑
 *  - [ ] 处理会话命令事件
-*  - [ ] Bug: 用户发送的命令，未在消息列表中居左显示
-*  - [ ] Bug: 用户发送的 '/abc' 等未知命令，使用浅黄色背景提示未知命令
+*  - [ ] Bug: 用户发送的 '/abc' 等未知命令，未使用浅黄色背景提示：Unknown bridge command: /abc
 *  - [ ] 页面刷新后恢复正在进行的运行
 *  - [ ] 处理对等用户消息
 *  - [ ] 无意义的输入（如：tett 1122)，触发澄清请求
@@ -799,16 +798,16 @@ export const useChatStore = defineStore('chatStore', () => {
     // 创建用户消息对象
     const userMsg = new Message({
       id: uuid(),
-      role: isBridgeCompressCommand ? Message.ROLE.Command : Message.ROLE.User,
+      role: isBridgeSlashCommand ? Message.ROLE.Command : Message.ROLE.User,
       content: content.trim(),
       timestamp: Date.now(),
       attachments,
       queued: shouldQueue,
       systemType: isBridgeSlashCommand ? Message.SYSTEM_TYPE.Command : undefined
     })
+    console.warn('userMsg:', userMsg)
 
     let runSubmitted = false
-    // console.warn('userMsg:', userMsg)
 
     // 如果没有活跃会话，创建新会话
     if (!activeSession.value) {
