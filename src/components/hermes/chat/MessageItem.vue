@@ -147,7 +147,7 @@ const effectiveHeadingIdPrefix = computed(() => props.headingIdPrefix ?? `msg-${
 // ==================== 消息类型判断计算属性 ====================
 
 // 是否为命令消息（role 为 command 或 systemType 为 command），用于执行系统命令
-const isCommandMessage = computed(() => !!props.message.content && props.message.role === Message.ROLE.Command && props.message.systemType === Message.SYSTEM_TYPE.Command)
+const isCommandMessage = computed(() => props.message.role === Message.ROLE.Command || props.message.systemType === Message.SYSTEM_TYPE.Command)
 
 // 是否为命令错误消息（command 角色且 systemType 为 error），用于展示命令执行失败
 const isCommandError = computed(() => props.message.role === Message.ROLE.Command && props.message.systemType === Message.SYSTEM_TYPE.Error)
