@@ -1,10 +1,9 @@
 /*
 * Todo:
 *  - [ ] 初始运行的逻辑
-*  - [ ] 处理会话命令事件
 *  - [ ] 页面刷新后恢复正在进行的运行
 *  - [ ] 处理对等用户消息
-*  - [ ] 无意义的输入（如：tett 1122)，触发澄清请求
+*  - [ ] 澄清请求
 * */
 
 /**
@@ -1686,24 +1685,67 @@ export const useChatStore = defineStore('chatStore', () => {
    * @param evt 运行事件
    */
   function handleSessionCommandEvent(evt: RunEvent) {
-    const sid = evt.session_id
-    if (!sid) return
-
     // 使用 WeakSet 防止重复处理相同事件
     if (seenSessionCommandEvents.has(evt)) return
     seenSessionCommandEvents.add(evt)
 
+    const sid = evt.session_id
+    if (!sid) return
+
     const target = getSession(sid)
     const action = evt.action
-    // const command = String(evt.command || '').toLowerCase()
+    const command = String(evt.command || '').toLowerCase()
 
     if (evt.started === true && evt.terminal === false) {
       serverWorking.value.add(sid)
     }
 
-    // Todo: 清空命令处理
-    // Todo: 标题更新命令处理
-    // Todo: 销毁命令处理
+    // 清空命令处理
+    if (action === 'clear' && command === 'clear') {
+      if (target) {
+        target.messages = []
+      }
+      queuedUserMessages.value.delete(sid)
+      queueLengths.value.delete(sid)
+      if (evt.clearHistory) {
+        const content = String(evt.message || '')
+        if (content) {
+          addMessage(sid, new Message({
+            id: uuid(),
+            role: Message.ROLE.Command,
+            content,
+            timestamp: Date.now(),
+            systemType: evt.ok ? Message.SYSTEM_TYPE.Command : Message.SYSTEM_TYPE.Error,
+            commandAction: action,
+            commandData: { ...evt }
+          }))
+        }
+      }
+      return
+    }
+
+    // 标题更新命令处理
+    if (action === 'title' && target && typeof evt.title === 'string') {
+      target.title = evt.title
+      target.updatedAt = Date.now()
+    }
+
+    // 销毁命令处理
+    if (action === 'destroy') {
+      streamStates.value.delete(sid)
+      serverWorking.value.delete(sid)
+      queueLengths.value.delete(sid)
+      queuedUserMessages.value.delete(sid)
+      setAbortState(null)
+      getSessionMessages(sid).forEach(_ => {
+        if (_.isStreaming) {
+          _.isStreaming = false
+        }
+        if (_.role === Message.ROLE.Tool && _.toolStatus === Message.TOOL_STATUS.Running) {
+          _.toolStatus = Message.TOOL_STATUS.Error
+        }
+      })
+    }
 
     // 使用量更新命令处理
     if (action === 'usage' && target) {
