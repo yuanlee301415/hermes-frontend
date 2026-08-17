@@ -124,6 +124,13 @@ export interface RunEvent {
   parsed_reasoning?: string
   compressed?: boolean
   synced?: boolean
+  // 澄清请求ID
+  clarify_id?: string
+  // AI 追问问题
+  question?: string
+  choices?: string[]
+  // 超时时间（毫秒）
+  timeout_ms?: number
 }
 
 /**
@@ -842,6 +849,27 @@ function globalSessionCommandHandler(event: RunEvent) {
   }
 }
 
+/**
+ * 全局 clarify.requested 事件处理器
+ * 处理澄清请求事件
+ */
+function globalClarifyRequestedHandler(event: RunEvent) {
+  const sid = event.session_id
+  if (!sid) return
+  sessionEventHandlers.get(sid)?.onClarifyRequested?.(event)
+}
+
+/**
+ * 全局 clarify.resolved 事件处理器
+ * 处理澄清请求解决事件
+ */
+function globalClarifyResolvedHandler(event: RunEvent) {
+  const sid = event.session_id
+  if (!sid) return
+  sessionEventHandlers.get(sid)?.onClarifyResolved?.(event)
+}
+
+
 function globalApprovalRequestedHandler() {
   console.error('Todo:globalApprovalRequestedHandler')
 }
@@ -854,13 +882,6 @@ function globalPeerUserMessageHandler() {
   console.error('Todo:globalPeerUserMessageHandler')
 }
 
-function globalClarifyRequestedHandler() {
-  console.error('Todo:globalClarifyRequestedHandler')
-}
-
-function globalClarifyResolvedHandler() {
-  console.error('Todo:globalClarifyResolvedHandler')
-}
 
 function globalAgentEventHandler() {
   console.error('Todo:globalAgentEventHandler')
@@ -882,3 +903,17 @@ export function onSessionCommand(handler: (event: RunEvent) => void): () => void
   }
 }
 
+/**
+ * 响应澄清请求
+ * @param sid 会话 ID
+ * @param clarifyId 澄清请求 ID
+ * @param response 用户的澄清回复内容
+ */
+export function respondClarify(sid: string, clarifyId: string, response: string) {
+  const socket = connectChatRun()
+  socket.emit('clarify.respond', {
+    session_id: sid,
+    clarify_id: clarifyId,
+    response
+  })
+}

@@ -3,7 +3,9 @@
 *  - [ ] 初始运行的逻辑
 *  - [ ] 页面刷新后恢复正在进行的运行
 *  - [ ] 处理对等用户消息
-*  - [ ] 澄清请求
+*  - [ ] 审批请求
+*  - [ ] 消息队列
+*  - [ ] 处理重放事件
 * */
 
 /**
@@ -23,7 +25,10 @@
  */
 import { defineStore } from 'pinia'
 import { getSessionsApi } from '@/api/sessions.ts'
-import { resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload } from '@/api/chat.ts'
+import {
+  type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload,
+  resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify
+} from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
 import { Message, Attachment } from '@/models/Message.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
@@ -85,8 +90,7 @@ export interface PendingApproval {
 
 /**
  * 待澄清请求接口 - AI 的追问
- *
- * 当 AI 需要更多信息才能继续回答时，会发送澄清请求
+ * - 当 AI 需要更多信息才能继续回答时，会发送澄清请求
  */
 export interface PendingClarify {
   sessionId: Session['id'] // 会话 ID
@@ -149,6 +153,12 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /** 会话 ID → 待澄清请求 */
   const pendingClarifies = ref<Map<Session['id'], PendingClarify>>(new Map())
+
+  /** 当前活跃会话的待澄清请求 */
+  const activePendingClarify = computed(() => {
+    const sid = activeSessionId.value
+    return sid ? pendingClarifies.value.get(sid) : null
+  })
 
   /** 是否正在流式传输（客户端或服务器有活跃运行） */
   const isStreaming = computed(() => {
@@ -362,7 +372,7 @@ export const useChatStore = defineStore('chatStore', () => {
             }
           }
 
-          // 处理重放事件（压缩状态等）
+          // Todo: 处理重放事件（压缩状态等）
           if (data.events?.length) {
             console.error('Todo: data.events')
           }
@@ -753,6 +763,42 @@ export const useChatStore = defineStore('chatStore', () => {
         msgs[idx] = new Message({ ..._, toolStatus: status })
       }
     })
+  }
+
+  /**
+   * 设置待澄清请求
+   * - 创建待澄清对象，包含问题、可选选项和超时时间
+   * @param evt 运行事件
+   */
+  function setPendingClarify(evt: RunEvent) {
+    const sid = evt.session_id
+    const clarifyId = evt.clarify_id
+    if (!sid || !clarifyId) return
+
+    pendingClarifies.value.set(sid, {
+      sessionId: sid,
+      clarifyId,
+      question: String(evt.question),
+      choices: Array.isArray(evt.choices) ? evt.choices: null,
+      timeoutMs: Number(evt.timeout_ms) || 300_000,
+      requestedAt: Date.now()
+    })
+  }
+
+  /**
+   * 清除待澄清请求
+   * @param evt 运行事件
+   */
+  function clearPendingClarify(evt: RunEvent) {
+    const sid = evt.session_id
+    if (!sid) return
+    const current = pendingClarifies.value.get(sid)
+    if (!current) return
+
+    const clarifyId = evt.clarify_id
+    if (clarifyId && current.clarifyId !== clarifyId) return
+
+    pendingClarifies.value.delete(sid)
   }
 
   /**
@@ -1521,12 +1567,14 @@ export const useChatStore = defineStore('chatStore', () => {
               console.warn('Todo: approval.resolved')
               break
 
+            // 澄清请求
             case 'clarify.requested':
-              console.warn('Todo: clarify.requested')
+              setPendingClarify(evt)
               break
 
+            // 澄清解决
             case 'clarify.resolved':
-              console.warn('Todo: clarify.resolved')
+              clearPendingClarify(evt)
               break
           }
         },
@@ -1792,6 +1840,19 @@ export const useChatStore = defineStore('chatStore', () => {
     console.error('Todo: resumeServerWorkingRun:', sid, force)
   }
 
+
+  /**
+   * 响应对待澄清请求
+   * - 发送响应到服务器并清除本地待澄清状态
+   * @param response 用户的响应文本
+   */
+  function respondToClarify(response: string) {
+    const pending = activePendingClarify.value
+    if (!pending) return
+    respondClarify(pending.sessionId, pending.clarifyId, response)
+    pendingClarifies.value.delete(pending.sessionId)
+  }
+
   return {
     sessions,
     sessionsLoaded,
@@ -1801,12 +1862,15 @@ export const useChatStore = defineStore('chatStore', () => {
     focusSessionId,
     isRunActive,
     sessionProfileFilter,
+    activePendingClarify,
+
     loadSessions,
     switchSession,
     sendMessage,
     isStreaming,
     isAborting,
     stopStreaming,
-    getThinkingObservation
+    getThinkingObservation,
+    respondToClarify
   }
 })
