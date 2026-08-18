@@ -3,7 +3,6 @@
 *  - [ ] 初始运行的逻辑
 *  - [ ] 页面刷新后恢复正在进行的运行
 *  - [ ] 处理对等用户消息
-*  - [ ] 审批请求
 *  - [ ] 消息队列
 *  - [ ] 处理重放事件
 * */
@@ -27,7 +26,7 @@ import { defineStore } from 'pinia'
 import { getSessionsApi } from '@/api/sessions.ts'
 import {
   type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload,
-  resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify
+  resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify, respondToolApproval
 } from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
 import { Message, Attachment } from '@/models/Message.ts'
@@ -158,6 +157,12 @@ export const useChatStore = defineStore('chatStore', () => {
   const activePendingClarify = computed(() => {
     const sid = activeSessionId.value
     return sid ? pendingClarifies.value.get(sid) : null
+  })
+
+  /** 当前活跃会话的待审批请求 */
+  const activePendingApproval = computed(() => {
+    const sid = activeSessionId.value
+    return sid ? pendingApprovals.value.get(sid) : null
   })
 
   /** 是否正在流式传输（客户端或服务器有活跃运行） */
@@ -799,6 +804,73 @@ export const useChatStore = defineStore('chatStore', () => {
     if (clarifyId && current.clarifyId !== clarifyId) return
 
     pendingClarifies.value.delete(sid)
+  }
+
+  /**
+   * 设置待审批请求
+   * - 根据事件数据创建待审批对象，支持特殊处理内存写入请求（限制为 once/deny）
+   * @param evt 运行事件
+   */
+  function setPendingApproval(evt: RunEvent) {
+    const sid = evt.session_id
+    const approvalId = evt.approval_id
+    if (!sid || !approvalId) return
+
+    const description = String(evt.description || '')
+    const normalizedDescription = description.trim().toLowerCase().replace(/\s+/g, ' ')
+
+    // 判断是否为内存写入请求
+    const isMemoryWrite = !Boolean(evt.allow_permanent) && (
+      normalizedDescription === 'save to memory' ||
+      normalizedDescription.startsWith('save to memory:') ||
+      normalizedDescription.startsWith('save to memory?')
+    )
+
+    const rawChoices = Array.isArray(evt.choices) ? evt.choices : ['once', 'session', 'deny']
+    const choices = rawChoices.filter((choice: unknown): choice is PendingApproval['choices'][number] =>
+        choice === 'once' || choice === 'session' || choice === 'always' || choice === 'deny'
+    )
+
+    pendingApprovals.value.set(sid, {
+      sessionId: sid,
+      approvalId,
+      command: String(evt.command || ''),
+      description,
+      choices: isMemoryWrite ? ['once', 'deny'] : choices.length ? choices : ['once', 'session', 'deny'],
+      allowPermanent: !!evt.allow_permanent,
+      isMemoryWrite,
+      requestedAt: Date.now()
+    })
+  }
+
+  /**
+   * 响应对待审批请求
+   * - 发送审批选择到服务器并清除本地待审批状态
+   * @param choice 审批选择（once/session/always/deny）
+   */
+  function respondApproval(choice: PendingApproval['choices'][number]) {
+    const pending = activePendingApproval.value
+    console.log('respondApproval:', { pending, pendingApprovals })
+    if (!pending) return
+    respondToolApproval(pending.sessionId, pending.approvalId, choice)
+    pendingApprovals.value.delete(pending.sessionId)
+  }
+
+  /**
+   * 清除待审批请求
+   * - 根据会话 ID 和审批 ID 清除待审批请求
+   * @param evt 运行事件
+   */
+  function clearPendingApproval(evt: RunEvent) {
+    const sid = evt.session_id
+    if (!sid) return
+    const current = pendingApprovals.value.get(sid)
+    if (!current) return
+    const approvalId = evt.approval_id
+    // 如果指定了审批 ID，确保匹配才清除
+    if (approvalId && current.approvalId !== approvalId) return
+    pendingApprovals.value.delete(sid)
+    console.log('clearPendingApproval:', { pendingApprovals })
   }
 
   /**
@@ -1559,12 +1631,14 @@ export const useChatStore = defineStore('chatStore', () => {
               console.warn('Todo: subagent.complete')
               break
 
+            // 审批请求
             case 'approval.requested':
-              console.warn('Todo: approval.requested')
+              setPendingApproval(evt)
               break
 
+            // 审批解决
             case 'approval.resolved':
-              console.warn('Todo: approval.resolved')
+              clearPendingApproval(evt)
               break
 
             // 澄清请求
@@ -1863,6 +1937,7 @@ export const useChatStore = defineStore('chatStore', () => {
     isRunActive,
     sessionProfileFilter,
     activePendingClarify,
+    activePendingApproval,
 
     loadSessions,
     switchSession,
@@ -1871,6 +1946,7 @@ export const useChatStore = defineStore('chatStore', () => {
     isAborting,
     stopStreaming,
     getThinkingObservation,
-    respondToClarify
+    respondToClarify,
+    respondApproval
   }
 })

@@ -128,9 +128,17 @@ export interface RunEvent {
   clarify_id?: string
   // AI 追问问题
   question?: string
+  // 澄清或审批时，用户可选的选项
   choices?: string[]
   // 超时时间（毫秒）
   timeout_ms?: number
+
+  // 审批请求ID
+  approval_id?: string
+  // 审批描述
+  description?: string
+  // 允许永久生效
+  allow_permanent?: boolean
 }
 
 /**
@@ -869,13 +877,24 @@ function globalClarifyResolvedHandler(event: RunEvent) {
   sessionEventHandlers.get(sid)?.onClarifyResolved?.(event)
 }
 
-
-function globalApprovalRequestedHandler() {
-  console.error('Todo:globalApprovalRequestedHandler')
+/**
+ * 全局 approval.requested 事件处理器
+ * - 处理工具执行审批请求事件
+ */
+function globalApprovalRequestedHandler(event: RunEvent) {
+  const sid = event.session_id
+  if (!sid) return
+  sessionEventHandlers.get(sid)?.onApprovalRequested?.(event)
 }
 
-function globalApprovalResolvedHandler() {
-  console.error('Todo:globalApprovalResolvedHandler')
+/**
+ * 全局 approval.resolved 事件处理器
+ * - 处理工具执行审批解决事件
+ */
+function globalApprovalResolvedHandler(event: RunEvent) {
+  const sid = event.session_id
+  if (!sid) return
+  sessionEventHandlers.get(sid)?.onApprovalResolved?.(event)
 }
 
 function globalPeerUserMessageHandler() {
@@ -915,5 +934,20 @@ export function respondClarify(sid: string, clarifyId: string, response: string)
     session_id: sid,
     clarify_id: clarifyId,
     response
+  })
+}
+
+/**
+ * 响应对工具执行的审批请求
+ * @param sid 会话 ID
+ * @param approvalId 审批请求 ID
+ * @param choice 审批选择：once（仅此一次）、session（本次会话）、always（始终允许）、deny（拒绝）
+ */
+export function respondToolApproval(sid: string, approvalId: string, choice: 'once' | 'session' | 'always' | 'deny') {
+  const socket = connectChatRun()
+  socket.emit('approval.respond', {
+    session_id: sid,
+    approval_id: approvalId,
+    choice
   })
 }

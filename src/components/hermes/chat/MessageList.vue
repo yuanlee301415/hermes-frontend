@@ -1,15 +1,16 @@
 <!--
 消息列表
 - 澄清面板
+- 审批面板
 
 Todo:
-- [ ] 虚拟列表
-- [ ] 审批面板
 - [ ] 消息队列面板
+- [ ] 虚拟列表
 -->
 <script setup lang="ts">
 import type { Session } from '@/models/Session.ts'
 import { Help } from '@vicons/tabler'
+import { ShieldCheckmarkOutline } from '@vicons/ionicons5'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { Message } from '@/models/Message.ts'
 import { useToolTraceVisibility } from '@/composables/useToolTraceVisibility.ts'
@@ -43,12 +44,10 @@ const displayMessages = computed(() => {
   })
 })
 
-// ==================== 审批请求 ====================
+// ==================== 浮动面板 ====================
 
 // 当前可见的审批请求：AI 需要用户确认才能执行的操作
-const visibleApproval = ref(false)
-
-// ==================== 澄清请求 ====================
+const visibleApproval = computed(() => chatStore.activePendingApproval)
 
 // 用户对澄清请求的响应内容
 const clarifyResponse = ref('');
@@ -105,8 +104,6 @@ function applyInitialSessionScroll(sessionId: Session['id']) {
   scrollToBottom()
 }
 
-// ==================== 澄清请求 ====================
-
 /**
  * 处理澄清请求：用户回答 AI 的问题
  * @param response - 用户的响应（可选，未提供时使用输入框中的内容）
@@ -115,6 +112,14 @@ function handleClarify(response?: string) {
   const finalResponse = response ?? clarifyResponse.value.trim()
   chatStore.respondToClarify(finalResponse)
   clarifyResponse.value = ''
+}
+
+/**
+ * 处理审批请求：用户选择允许/拒绝 AI 的操作
+ * @param choice - 审批选择：once（一次）、session（当前会话）、always（始终允许）、deny（拒绝）
+ */
+function handleApproval(choice: "once" | "session" | "always" | "deny") {
+  chatStore.respondApproval(choice)
 }
 </script>
 
@@ -130,6 +135,41 @@ function handleClarify(response?: string) {
 
     <!-- ================================ >>>[浮动面板堆栈] ================================ -->
     <div v-if="visibleApproval || visibleClarify" class="message-float-stack">
+
+      <!-- ============================ >>>[审批面板：AI 需要用户确认才能执行的操作] ============================ -->
+      <transition name="queue-float">
+        <div v-if="visibleApproval" class="approval-float-panel">
+          <div class="float-panel-header">
+            <div class="float-icon">
+              <n-icon :size="18"><ShieldCheckmarkOutline/></n-icon>
+            </div>
+            <span>终端授权</span>
+          </div>
+
+          <div class="approval-float-title">运行前请确认命令</div>
+          <div class="approval-float-desc">{{ visibleApproval.description }}</div>
+          <div class="approval-float-command">{{ visibleApproval.command }}</div>
+
+          <div class="approval-float-actions">
+            <!-- 内存写入确认 -->
+            <n-button v-if="visibleApproval.isMemoryWrite" size="small" type="primary" @click="handleApproval('once')">同意</n-button>
+
+            <!-- 仅本次允许 -->
+            <n-button v-if="!visibleApproval.isMemoryWrite && visibleApproval.choices.includes('once')" size="small" type="primary" @click="handleApproval('once')">仅本次允许</n-button>
+
+            <!-- 本会话允许 -->
+            <n-button v-if="!visibleApproval.isMemoryWrite && visibleApproval.choices.includes('session')" size="small" secondary @click="handleApproval('session')">本会话允许</n-button>
+
+             <!-- 始终允许 -->
+            <n-button v-if="!visibleApproval.isMemoryWrite && visibleApproval.choices.includes('always')" size="small" secondary @click="handleApproval('always')">始终允许</n-button>
+
+            <!-- 拒绝 -->
+            <n-button v-if="visibleApproval.isMemoryWrite || visibleApproval.choices.includes('deny')" size="small" type="error" secondary @click="handleApproval('deny')">拒绝</n-button>
+          </div>
+
+        </div>
+      </transition>
+      <!-- ============================ [审批面板]<<< ============================ -->
 
       <!-- ============================ >>>[澄清面板：AI 需要用户进一步说明的问题] ============================ -->
       <transition name="queue-float">
@@ -163,9 +203,6 @@ function handleClarify(response?: string) {
         </div>
       </transition>
       <!-- ============================ [澄清面板]<<< ============================ -->
-
-      <!-- ============================ >>>Todo:[审批面板：AI 需要用户确认才能执行的操作] ============================ -->
-      <!-- ============================ [审批面板]<<< ============================ -->
 
       <!-- ============================ >>>Todo:[消息队列面板：显示已发送但尚未处理的消息] ============================ -->
       <!-- ============================ [消息队列面板]<<< ============================ -->
@@ -235,6 +272,22 @@ function handleClarify(response?: string) {
         font-size: 12px;
         line-height: 1.45;
         color: var(--text-secondary);
+      }
+      .approval-float-command {
+        display: block;
+        margin: 8px 4px 0;
+        max-height: 96px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 11px;
+        padding: 8px 10px;
+        background: rgba(var(--accent-primary-rgb), 0.24);
       }
       .approval-float-actions {
         display: flex;
