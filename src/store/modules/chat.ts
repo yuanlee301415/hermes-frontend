@@ -26,7 +26,7 @@ import { defineStore } from 'pinia'
 import { getSessionsApi } from '@/api/sessions.ts'
 import {
   type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload,
-  resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify, respondToolApproval
+  resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify, respondToolApproval, onPeerUserMessage
 } from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
 import { Message, Attachment } from '@/models/Message.ts'
@@ -147,6 +147,9 @@ export const useChatStore = defineStore('chatStore', () => {
   /** 会话 ID → 已排队但尚未在对话中显示的用户消息 */
   const queuedUserMessages = ref<Map<Session['id'], Message[]>>(new Map())
 
+  /** 会话 ID → 服务器报告已出队但对等消息尚未到达的队列 ID 集合 */
+  const dequeueQueueIds = ref<Map<Session['id'], Set<Message['id']>>>(new Map())
+
   /** 会话 ID → 待审批请求 */
   const pendingApprovals = ref<Map<Session['id'], PendingApproval>>(new Map())
 
@@ -202,6 +205,8 @@ export const useChatStore = defineStore('chatStore', () => {
   // 注册全局会话命令处理器
   onSessionCommand(handleGlobalSessionCommand)
 
+  // 注册对等用户消息处理器
+  onPeerUserMessage(handlePeerUserMessage)
 
   /**
    * 加载会话列表
@@ -462,24 +467,24 @@ export const useChatStore = defineStore('chatStore', () => {
    *
    * 合并现有消息的附件（避免丢失本地文件引用），并更新队列长度。
    *
-   * @param sessionId 会话 ID
+   * @param sid 会话 ID
    * @param messages 新的消息列表
    */
-  function replaceQueuedUserMessages(sessionId: Session['id'], messages: Message[]) {
-    const existingById = new Map((queueUserMessages.value.get(sessionId) ?? []).map(message => [message.id, message]))
+  function replaceQueuedUserMessages(sid: Session['id'], messages: Message[]) {
+    const existingById = new Map((queueUserMessages.value.get(sid) ?? []).map(message => [message.id, message]))
     const merged = messages.map(message => ({
-      ...(existingById.get(message.id) ?? {}),
+      ...existingById.get(message.id),
       ...message,
       attachments: existingById.get(message.id)?.attachments ?? message.attachments,
       queued: true
     }))
     const nextMap = new Map(queueUserMessages.value)
     if (merged.length) {
-      nextMap.set(sessionId, merged as Message[])
+      nextMap.set(sid, merged as Message[])
     } else {
-      nextMap.delete(sessionId)
+      nextMap.delete(sid)
     }
-    queueUserMessages.value =  nextMap
+    queuedUserMessages.value = nextMap
   }
 
   /**
@@ -874,6 +879,184 @@ export const useChatStore = defineStore('chatStore', () => {
   }
 
   /**
+   * 标记队列 ID 为已出队（服务器报告出队但对等消息尚未到达）
+   * - 用于处理消息到达顺序问题：服务器报告消息出队，但实际消息可能还没到客户端。
+   * @param sid 会话 ID
+   * @param msgId 消息 ID
+   */
+  function markDequeuedQueueId(sid: Session['id'], msgId: Message['id']) {
+    const ids = new Set(dequeueQueueIds.value.get(sid) ?? [])
+    ids.add(msgId)
+    dequeueQueueIds.value.set(sid, ids)
+  }
+
+  /**
+   * 处理运行排队事件
+   * - 处理服务器发送的队列状态更新，包括：
+   * 1. 更新队列长度
+   * 2. 处理消息出队（从队列移除并添加到消息列表）
+   * 3. 更新队列消息列表
+   * 4. 添加新的排队消息
+   * @param sid 会话 ID
+   * @param evt 运行事件
+   */
+  function handleRunQueuedEvent(sid: Session['id'], evt: RunEvent) {
+    const queuedLength = Number(evt.queue_length ?? 0)
+    if (queuedLength > 0) {
+      queueLengths.value.set(sid, queuedLength)
+    } else {
+      queueLengths.value.delete(sid)
+    }
+
+    // 处理消息出队
+    const dequeuedId = evt.dequeued_queue_id ? String(evt.dequeued_queue_id) : ''
+    if (dequeuedId) {
+      const existingQueue = queuedUserMessages.value.get(sid) ?? []
+      const dequeued = existingQueue.find(_ => _.id === dequeuedId)
+
+      // 更新队列消息列表
+      if (Array.isArray(evt.queued_messages)) {
+        const queued = normalizeQueuedUserMessages(evt.queued_messages)
+        replaceQueuedUserMessages(sid, queued)
+      } else {
+        const nextQueue = existingQueue.filter(_ => _.id !== dequeuedId)
+        replaceQueuedUserMessages(sid, nextQueue)
+      }
+
+      // 如果出队消息存在且不在消息列表中，添加到消息列表
+      if (dequeued && !getSessionMessages(sid).some(_ => _.id === dequeued.id)) {
+        addMessage(sid, new Message({ ...dequeued, queued: false }))
+        updateSessionTitle(sid)
+      } else if(!dequeued) {
+        // 消息还没到，标记为已出队
+        markDequeuedQueueId(sid, dequeuedId)
+      }
+      return
+    }
+
+    // 更新完整队列消息列表
+    if (Array.isArray(evt.queued_messages)) {
+      const queued = normalizeQueuedUserMessages(evt.queued_messages)
+      replaceQueuedUserMessages(sid, queued)
+      return
+    }
+
+    // 添加新的排队消息
+    const peer = evt.message
+    const content = typeof peer?.content === 'string' ? peer.content : ''
+    const msgId = peer?.id != null ? String(peer.id) : ''
+    if (!msgId || !content.trim()) return
+
+    // 防止重复添加
+    if (queuedUserMessages.value.get(sid)?.some(_ => _.id === msgId)) return
+
+    const timestamp = typeof peer?.timestamp === 'number' && Number.isFinite(peer.timestamp)
+      ? Math.round(peer.timestamp * 1000)
+      : Date.now()
+    const msgs = getSessionMessages(sid)
+
+    // 如果消息已在消息列表中，先移除它
+    const existingIndex = msgs.findIndex(_ => _.id === msgId && _.role === Message.ROLE.User)
+    const existing = msgs[existingIndex]
+    if (existingIndex >= 0) {
+      msgs.splice(existingIndex, 1)
+    }
+
+    // 添加到队列
+    enqueueUserMessage(sid, new Message({
+      ...existing,
+      id: msgId,
+      role: peer?.role === Message.ROLE.Command ? Message.ROLE.Command : Message.ROLE.User,
+      content,
+      timestamp: existing?.timestamp ?? timestamp,
+      attachments: existing?.attachments,
+      queued: true,
+      systemType: peer?.role === Message.ROLE.Command ? Message.ROLE.Command : existing?.systemType
+    }))
+  }
+
+  /**
+   * 消费已出队的队列 ID
+   * - 当消息到达时，检查是否已经标记为出队，如果是则消费该标记
+   * @param sid 会话 ID
+   * @param msgId 消息 ID
+   * @returns 是否成功消费
+   */
+  function consumeDequeuedQueueId(sid: Session['id'], msgId: Message['id']) {
+    const ids = dequeueQueueIds.value.get(sid)
+    if (!ids?.has(msgId)) return false
+    const nextIds = new Set(ids)
+    nextIds.delete(msgId)
+    const nextMap = new Map(dequeueQueueIds.value)
+    if (nextIds.size > 0) {
+      nextMap.set(sid, nextIds)
+    } else {
+      nextMap.delete(sid)
+    }
+    dequeueQueueIds.value = nextMap
+    return true
+  }
+
+  /**
+   * 处理对等用户消息（从其他设备/CLI/Telegram 发送的消息）
+   * - 当服务器广播来自其他客户端的用户消息时，将其添加到本地会话中
+   * @param evt 运行事件
+   */
+  function handlePeerUserMessage(evt: RunEvent) {
+    const sid = evt.session_id
+    if (!sid || activeSessionId.value !== sid || !activeSession.value) return
+
+    const peer = evt.message
+    const content = typeof peer?.content === 'string' ? peer.content : ''
+    if (!content.trim()) return
+
+    const msgId = peer?.id ? String(peer.id) : ''
+    const msgs = getSessionMessages(sid)
+
+    // 如果消息已存在，恢复运行
+    if (msgId && msgs.some(_ => _.id === msgId)) {
+      serverWorking.value.add(sid)
+      resumeServerWorkingRun(sid, true)
+      return
+    }
+
+    // 如果消息在队列中，恢复运行
+    if (msgId && queuedUserMessages.value.get(sid)?.some(_ => _.id === msgId)) {
+      serverWorking.value.add(sid)
+      resumeServerWorkingRun(sid, true)
+      return
+    }
+
+    const timestamp = typeof peer?.timestamp === 'number' && Number.isFinite(peer.timestamp)
+      ? Math.round(peer.timestamp * 1000)
+      : Date.now()
+
+    const msg = new Message({
+      id: msgId ?? uuid(),
+      role: peer?.role === Message.ROLE.Command ? Message.ROLE.Command : Message.ROLE.User,
+      content,
+      timestamp,
+      queued: !!peer?.queued,
+      systemType: peer?.role === Message.ROLE.Command ? Message.ROLE.Command : undefined
+    })
+
+    // 检查是否已标记为出队
+    const wasDequeued = msgId ? consumeDequeuedQueueId(sid, msgId) : false
+
+    // 如果消息在队列中或会话正在运行，添加到队列；否则直接添加到消息列表
+    if (peer?.queued || (!wasDequeued && isSessionLive(sid))) {
+      enqueueUserMessage(sid, msg)
+    } else {
+      addMessage(sid, msg)
+      updateSessionTitle(sid)
+    }
+
+    // 恢复运行监听
+    serverWorking.value.add(sid)
+    resumeServerWorkingRun(sid, true)
+  }
+
+  /**
    * 发送消息
    *
    * 消息发送的核心流程：
@@ -1255,9 +1438,9 @@ export const useChatStore = defineStore('chatStore', () => {
               break
             }
 
-            // Todo: run.queued
+            // 运行排队
             case 'run.queued':
-              console.warn('Todo: run.queued')
+              handleRunQueuedEvent(sid, evt)
               break
 
             case 'session.command':
@@ -1902,15 +2085,20 @@ export const useChatStore = defineStore('chatStore', () => {
   }
 
   /**
+   * Todo:
    * 页面刷新后恢复正在进行的运行
-   *
-   * 通过 Socket.IO 发送 'resume' 事件加入服务器的会话房间，
-   * 然后设置事件监听器接收持续的事件。
-   *
+   * - 通过 Socket.IO 发送 'resume' 事件加入服务器的会话房间
+   * - 然后设置事件监听器接收持续的事件
    * @param sid 会话 ID
    * @param force 是否强制恢复（即使服务器没有报告活跃运行）
    */
   function resumeServerWorkingRun(sid: Session['id'], force = false) {
+    // 如果已经在流式传输，不注册重复监听器
+    if (streamStates.value.has(sid)) return
+
+    // 只有当服务器在恢复期间报告了活跃运行时才设置监听器
+    if (!force && !streamStates.value.has(sid)) return
+
     console.error('Todo: resumeServerWorkingRun:', sid, force)
   }
 
@@ -1927,6 +2115,20 @@ export const useChatStore = defineStore('chatStore', () => {
     pendingClarifies.value.delete(pending.sessionId)
   }
 
+  /**
+   * 移除队列中的消息（本地 + 通知服务器）
+   * - 从本地队列移除后，还会通过 Socket.IO 通知服务器取消排队的运行
+   * @param sid 会话 ID
+   * @param msgId 消息 ID
+   */
+  function removeQueuedMessage(sid: Session['id'], msgId: Message['id']) {
+    if (!dropQueuedUserMessage(sid, msgId)) return
+    getChatRunSocket()?.emit('cancel_queued_run', {
+      session_id: sid,
+      queue_id: msgId
+    })
+  }
+
   return {
     sessions,
     sessionsLoaded,
@@ -1938,6 +2140,7 @@ export const useChatStore = defineStore('chatStore', () => {
     sessionProfileFilter,
     activePendingClarify,
     activePendingApproval,
+    queuedUserMessages,
 
     loadSessions,
     switchSession,
@@ -1947,6 +2150,7 @@ export const useChatStore = defineStore('chatStore', () => {
     stopStreaming,
     getThinkingObservation,
     respondToClarify,
-    respondApproval
+    respondApproval,
+    removeQueuedMessage
   }
 })

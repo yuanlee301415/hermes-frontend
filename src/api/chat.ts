@@ -275,6 +275,9 @@ const sessionCommandHandlers = new Set<(event: RunEvent) => void>()
 /** 全局会话标题更新处理器集合 */
 const sessionTitleUpdatedHandlers = new Set<(event: RunEvent) => void>()
 
+/** 全局对等用户消息处理器集合 */
+const peerUserMessageHandlers = new Set<(event: RunEvent) => void>()
+
 // 当前的聊天运行 Socket 连接实例
 let chatRunSocket: Socket | null = null
 
@@ -897,10 +900,19 @@ function globalApprovalResolvedHandler(event: RunEvent) {
   sessionEventHandlers.get(sid)?.onApprovalResolved?.(event)
 }
 
-function globalPeerUserMessageHandler() {
-  console.error('Todo:globalPeerUserMessageHandler')
-}
+/**
+ * 全局 run.peer_user_message 事件处理器
+ * - 处理来自其他用户的对等消息事件，同时通知会话特定处理器和全局处理器
+ */
+function globalPeerUserMessageHandler(event: RunEvent) {
+  const sid = event.session_id
+  if (!sid) return
+  sessionEventHandlers.get(sid)?.onPeerUserMessage?.(event)
 
+  for (const handler of peerUserMessageHandlers) {
+    handler(event)
+  }
+}
 
 function globalAgentEventHandler() {
   console.error('Todo:globalAgentEventHandler')
@@ -919,6 +931,18 @@ export function onSessionCommand(handler: (event: RunEvent) => void): () => void
   sessionCommandHandlers.add(handler)
   return () => {
     sessionCommandHandlers.delete(handler)
+  }
+}
+
+/**
+ * 订阅对等用户消息事件（全局）
+ * @param handler 事件处理函数
+ * @returns 取消订阅函数
+ */
+export function onPeerUserMessage(handler: (event: RunEvent) => void): () => void {
+  peerUserMessageHandlers.add(handler)
+  return () => {
+    peerUserMessageHandlers.delete(handler)
   }
 }
 

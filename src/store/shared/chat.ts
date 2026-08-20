@@ -351,14 +351,14 @@ export function normalizeQueuedUserMessages(rawMessages: unknown): Message[] {
   return rawMessages.flatMap(raw => {
     const peer = raw as NonNullable<RunEvent['queued_messages']>[number]
     const content = typeof peer.content === 'string' ? peer.content : ''
-    const mesageId = peer?.id ? String(peer.id) : ''
-    if (!mesageId || !content.trim()) return  []
+    const msgId = peer?.id ? String(peer.id) : ''
+    if (!msgId || !content.trim()) return  []
 
     const timestamp = typeof peer?.timestamp  === 'number'  && Number.isFinite(peer.timestamp) ? Math.round(peer.timestamp * 1000) : Date.now()
     const role = peer?.role === Message.ROLE.Command ? Message.ROLE.Command : Message.ROLE.User
 
     return [new Message({
-      id: mesageId,
+      id: msgId,
       role,
       content,
       timestamp,

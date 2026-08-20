@@ -2,10 +2,14 @@
 消息列表
 - 澄清面板
 - 审批面板
+- 消息队列面板
 
 Todo:
-- [ ] 消息队列面板
+- [ ] 空状态插槽：当没有消息时显示
+- [ ] 列表顶部插槽：历史消息加载指示器
+- [ ] 列表底部插槽：流式传输指示器和工具调用面板
 - [ ] 虚拟列表
+
 -->
 <script setup lang="ts">
 import type { Session } from '@/models/Session.ts'
@@ -46,14 +50,21 @@ const displayMessages = computed(() => {
 
 // ==================== 浮动面板 ====================
 
+// 用户对澄清请求的响应内容
+const clarifyResponse = ref('')
+
 // 当前可见的审批请求：AI 需要用户确认才能执行的操作
 const visibleApproval = computed(() => chatStore.activePendingApproval)
 
-// 用户对澄清请求的响应内容
-const clarifyResponse = ref('');
-
 // 当前可见的澄清请求：AI 需要用户进一步说明的问题
 const visibleClarify = computed(() => chatStore.activePendingClarify)
+
+// 当前会话的排队消息列表：用户发送但尚未处理的消息
+const queuedMessages = computed(() => {
+  const sid = chatStore.activeSessionId;
+  if (!sid) return [];
+  return chatStore.queuedUserMessages.get(sid) || [];
+})
 
 
 // ==================== Watch ====================
@@ -90,6 +101,16 @@ watch(() => chatStore.messages.at(-1)?.content, () => {
   scrollToBottom()
 })
 
+/**
+ * 格式化排队消息预览：将消息内容规范化并截断到 48 字符
+ * @param content - 消息原始内容
+ * @returns 预览文本（最多 48 字符）
+ */
+function queuedPreview(content: string): string {
+  const normalized = content.replace(/\s+/g, ' ').trim()
+  return normalized.length > 48 ? `${normalized.slice(0, 48)}...` : normalized
+}
+
 // 滚动到底部
 function scrollToBottom() {
   listRef.value?.scrollToBottom();
@@ -121,6 +142,16 @@ function handleClarify(response?: string) {
 function handleApproval(choice: "once" | "session" | "always" | "deny") {
   chatStore.respondApproval(choice)
 }
+
+/**
+ * 移除排队中的消息：用户取消发送尚未处理的消息
+ * @param msgId - 要移除的消息 ID
+ */
+function removeQueuedMessage(msgId: Message['id']) {
+  const sid = chatStore.activeSessionId
+  if (!sid) return
+  chatStore.removeQueuedMessage(sid, msgId)
+}
 </script>
 
 <template>
@@ -134,7 +165,7 @@ function handleApproval(choice: "once" | "session" | "always" | "deny") {
     </VirtualMessageList>
 
     <!-- ================================ >>>[浮动面板堆栈] ================================ -->
-    <div v-if="visibleApproval || visibleClarify" class="message-float-stack">
+    <div v-if="visibleApproval || visibleClarify || queuedMessages.length" class="message-float-stack">
 
       <!-- ============================ >>>[审批面板：AI 需要用户确认才能执行的操作] ============================ -->
       <transition name="queue-float">
@@ -204,7 +235,27 @@ function handleApproval(choice: "once" | "session" | "always" | "deny") {
       </transition>
       <!-- ============================ [澄清面板]<<< ============================ -->
 
-      <!-- ============================ >>>Todo:[消息队列面板：显示已发送但尚未处理的消息] ============================ -->
+      <!-- ============================ >>>[消息队列面板：显示已发送但尚未处理的消息] ============================ -->
+      <transition name="queue-float">
+        <div v-if="queuedMessages.length" class="queue-float-panel">
+          <div class="float-panel-header">
+            <!-- 动画轨道图标 -->
+            <span class="queue-orbit" aria-hidden="true">
+              <span></span>
+            </span>
+            <span>消息队列</span>
+            <strong>{{ queuedMessages.length }}</strong>
+          </div>
+
+          <div class="queue-float-list">
+            <div v-for="(msg, idx) of queuedMessages" :key="msg.id" class="queue-float-item">
+              <span class="queue-index">{{ idx + 1}}</span>
+              <span class="queue-text">{{ queuedPreview(msg.content) }}</span>
+              <n-button text size="tiny" type="error" title="移除队列消息"  @click="removeQueuedMessage(msg.id)">&times;</n-button>
+            </div>
+          </div>
+        </div>
+      </transition>
       <!-- ============================ [消息队列面板]<<< ============================ -->
 
     </div>
@@ -222,6 +273,24 @@ function handleApproval(choice: "once" | "session" | "always" | "deny") {
   display: flex;
 
   .message-float-stack {
+    .queue-float-enter-active,
+    .queue-float-leave-active {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .queue-float-enter-from,
+    .queue-float-leave-to {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+
+    // 队列旋转动画：轨道图标持续旋转
+    @keyframes queue-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     position: absolute;
     right: 16px;
     bottom: 16px;
@@ -242,19 +311,92 @@ function handleApproval(choice: "once" | "session" | "always" | "deny") {
       background: var(--bg-secondary);
       box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14);
       backdrop-filter: blur(14px);
+      .float-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 2px 4px 8px;
+        color: var(--accent-primary);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+
+        .queue-orbit {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          border: 1px solid rgba(var(--accent-info-rgb), 0.28);
+          position: relative;
+          animation: queue-spin 1.6s linear infinite;
+          span {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            right: -2px;
+            top: 5px;
+            background: var(--accent-info);
+            box-shadow: 0 0 12px rgba(var(--accent-info-rgb), 0.65);
+          }
+        }
+
+        strong {
+          margin-left: auto;
+          min-width: 20px;
+          height: 20px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          background: rgba(var(--accent-info-rgb), 0.16);
+          color: var(--accent-info);
+        }
+      }
     }
 
-    .float-panel-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 2px 4px 8px;
-      color: var(--accent-primary);
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1.2;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+    .queue-float-panel {
+      align-self: flex-end;
+      width: min(380px, 100%);
+
+      .queue-float-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 172px;
+        overflow-y: auto;
+        .queue-float-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 34px;
+          padding: 7px 8px;
+          border-radius: 11px;
+          color: var(--text-primary);
+          background: rgba(var(--accent-primary-rgb), 0.1);
+          .queue-index {
+            flex: 0 0 auto;
+            width: 20px;
+            height: 20px;
+            border-radius: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: var(--accent-info);
+            background: rgba(var(--accent-info-rgb), 0.12);
+          }
+          .queue-text {
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 12px;
+          }
+        }
+      }
     }
 
     .approval-float-panel {
@@ -306,34 +448,14 @@ function handleApproval(choice: "once" | "session" | "always" | "deny") {
       margin-top: 10px;
       padding: 10px 4px 0;
       border-top: 1px solid var(--border-color);
-
-      // 输入框占满剩余空间
       :deep(.n-input) {
         flex: 1 1 auto;
         min-width: 0;
       }
-
-      // 按钮固定宽度
       :deep(.n-button) {
         flex: 0 0 auto;
       }
     }
   }
-
-
-  /**
-   * 队列面板进入/离开过渡动画
-   */
-  .queue-float-enter-active,
-  .queue-float-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-  }
-
-  .queue-float-enter-from,
-  .queue-float-leave-to {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-
 }
 </style>
