@@ -18,7 +18,7 @@ import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
 import { formatTime } from '@/utils/formatTime.ts'
 import { parseThinking, countThinkingChars } from '@/utils/thinking-parser.ts'
 import { useChatStore } from '@/store/modules/chat.ts'
-import { formatDuration } from '@/utils/format.ts'
+import { formatDurationMs } from '@/utils/format.ts'
 import { copyToClipboard } from '@/utils/clipboard.ts'
 import MarkdownRender from './MarkdownRender/index.vue'
 import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
@@ -320,7 +320,7 @@ async function handleCopyMessage() {
 
                 <!-- 思考时长 -->
                 <span v-if="thinkingDurationMs != null && thinkingDurationMs > 0" class="thinking-meta">
-                    · 已观察 {{formatDuration(thinkingDurationMs)}}
+                    · 已观察 {{formatDurationMs(thinkingDurationMs)}}
                   </span>
 
                 <!-- 思考内容字符数 -->

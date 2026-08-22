@@ -3,26 +3,31 @@
 - 澄清面板
 - 审批面板
 - 消息队列面板
+- 空状态
+- 流式传输指示器
+- 工具调用列表
 
 Todo:
-- [ ] 空状态插槽：当没有消息时显示
-- [ ] 列表顶部插槽：历史消息加载指示器
-- [ ] 列表底部插槽：流式传输指示器和工具调用面板
-- [ ] 虚拟列表
-
+- [ ] 应用虚拟列表
 -->
 <script setup lang="ts">
-import type { Session } from '@/models/Session.ts'
+import { useOsTheme } from 'naive-ui'
 import { Help } from '@vicons/tabler'
-import { ShieldCheckmarkOutline } from '@vicons/ionicons5'
+import { ShieldCheckmarkOutline, CheckmarkCircleOutline, PauseCircleOutline, Sync, BuildOutline, Checkmark, CloseOutline } from '@vicons/ionicons5'
+import { Session } from '@/models/Session.ts'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { Message } from '@/models/Message.ts'
 import { useToolTraceVisibility } from '@/composables/useToolTraceVisibility.ts'
+import { formatTokens } from '@/utils/formatTokens.ts'
+import { formatToolDurationSeconds } from '@/utils/format.ts'
+import thinkingImageDark from "@/assets/thinking-dark.gif";
+import thinkingImageLight from "@/assets/thinking-light.gif";
 import MessageItem from './MessageItem.vue'
 import VirtualMessageList from './VirtualMessageList.vue'
 
 defineOptions({ name: 'MessageList' })
 
+const osTheme = useOsTheme()
 const chatStore = useChatStore()
 const { toolTraceVisible } = useToolTraceVisibility()
 const listRef = ref<InstanceType<typeof VirtualMessageList>| null>(null)
@@ -47,6 +52,31 @@ const displayMessages = computed(() => {
     return !(msg.role === Message.ROLE.Assistant && msg.isStreaming && !msg.content?.trim() && !!msg.reasoning?.trim() && currentToolCalls.value.length === 0)
   })
 })
+
+// 空状态配置：根据当前会话的 AI 代理类型返回对应的 logo 和提示文本
+const emptyState = computed(() => {
+  const sess = chatStore.activeSession
+  if (sess?.codingAgentId === Session.CODING_AGENT_ID.Codex || sess?.agent === Session.AGENT.Codex) {
+    return {
+      logo: '/coding-agents/codex-openai.png',
+      alt: 'Codex'
+    }
+  }
+  if (sess?.codingAgentId === Session.CODING_AGENT_ID.ClaudeCode || sess?.agent === Session.AGENT.Claude) {
+    return {
+      logo: '/coding-agents/claude-code.svg',
+      alt: 'Claude'
+    }
+  }
+  return {
+    logo: '/coding-agents/hermes.png',
+    alt: 'Hermes Agent'
+  }
+})
+
+// 可见的工具调用列表：过滤掉没有工具名称的调用
+const visibleToolCalls = computed(() => currentToolCalls.value.filter(tool => !!tool.toolName))
+
 
 // ==================== 浮动面板 ====================
 
@@ -158,10 +188,115 @@ function removeQueuedMessage(msgId: Message['id']) {
   <div class="message-list-shell">
     <VirtualMessageList
       :key="chatStore.activeSessionId || 'chat-empty'"
-      :messages="displayMessages" v-slot="{item}"
+      :messages="displayMessages"
       ref="listRef"
     >
-      <MessageItem :message="item" :highlight="chatStore.focusSessionId === item.id" />
+      <!-- 空状态插槽：当没有消息时显示 -->
+      <template #empty>
+        <n-flex vertical align="center" class="empty-state">
+          <img :src="emptyState.logo" :alt="emptyState.alt">
+          <p>开始与 {{ emptyState.alt }} 对话</p>
+        </n-flex>
+      </template>
+
+      <!-- 消息项插槽：渲染每条消息 -->
+      <template #item="{item}">
+        <MessageItem :message="item" :highlight="chatStore.focusSessionId === item.id" />
+      </template>
+
+      <!-- 列表底部插槽：流式传输指示器和工具调用面板 -->
+      <template #after>
+        <transition name="fade">
+          <div v-if="chatStore.abortState || chatStore.isRunActive" class="streaming-indicator">
+            <img :src="osTheme === 'dark' ? thinkingImageDark : thinkingImageLight" alt="" class="thinking-video"/>
+
+            <div
+              v-if="chatStore.abortState || chatStore.compressionState || visibleToolCalls.length"
+              class="tool-calls-panel"
+            >
+
+              <!-- 中止状态指示器 -->
+              <div v-if="chatStore.abortState" class="tool-call-item compression-item">
+                <!-- 中止中图标 -->
+                <n-icon v-if="chatStore.abortState.aborting"><CheckmarkCircleOutline/></n-icon>
+
+                <!-- 已暂停图标 -->
+                <n-icon v-else><PauseCircleOutline/></n-icon>
+
+                <!-- 状态文本 -->
+                <span class="tool-call-name">
+                  {{
+                  chatStore.abortState.aborting
+                    ? chatStore.abortState.timedOut
+                      ? (chatStore.abortState.message || 'Still stopping... new messages will be queued')
+                      : 'Pausing... waiting for the run to stop and sync'
+                    : chatStore.abortState.synced
+                      ? 'Paused and synced'
+                      : 'Paused'
+                  }}
+                </span>
+
+                <!-- 加载动画 -->
+                <span v-if="chatStore.abortState.aborting" class="tool-call-spinner"></span>
+              </div>
+
+              <!-- 压缩状态指示器 -->
+              <div v-if="chatStore.compressionState" class="tool-call-item compression-item">
+                <!-- 压缩中图标 -->
+                <n-icon v-if="chatStore.compressionState.compressing"><Sync/></n-icon>
+
+                <!-- 已压缩图标 -->
+                <n-icon v-else-if="chatStore.compressionState.compressed"><CheckmarkCircleOutline/></n-icon>
+
+                <!-- 状态文本 -->
+                <span class="tool-call-name">
+                  {{
+                    chatStore.compressionState.compressing
+                      ? `Compressing... (${chatStore.compressionState.messageCount} msgs, ~${formatTokens(chatStore.compressionState.beforeTokens)} tokens)`
+                      : chatStore.compressionState.compressed
+                        ? `Compressed ${chatStore.compressionState.messageCount} msgs: ~${formatTokens(chatStore.compressionState.beforeTokens)} → ~${formatTokens(chatStore.compressionState.afterTokens)} tokens`
+                        : `Compression skipped`
+                  }}
+                </span>
+
+                <!-- 加载动画 -->
+                <span v-if="chatStore.compressionState.compressing" class="tool-call-spinner"></span>
+              </div>
+
+              <!-- 工具调用列表 -->
+              <div v-for="tc of visibleToolCalls" :key="tc.id" class="tool-call-item">
+                <!-- 工具图标 -->
+                <n-icon><BuildOutline/></n-icon>
+
+                <!-- 工具名称 -->
+                <span class="tool-call-name">{{ tc.toolName }}</span>
+
+                <!-- 工具调用预览 -->
+                <span v-if="tc.toolPreview" class="tool-call-preview">{{ tc.toolPreview}}</span>
+
+                <!-- 执行时长 -->
+                <span v-if="tc.toolDuration && tc.toolStatus !== Message.TOOL_STATUS.Running" class="tool-call-duration" title="执行时长">
+                  {{ formatToolDurationSeconds(tc.toolDuration) }}
+                </span>
+
+                <!-- 运行中动画 -->
+                <span v-if="tc.toolStatus === Message.TOOL_STATUS.Running" class="tool-call-spinner"></span>
+
+                <!-- 成功图标 -->
+                <n-icon-wrapper v-else-if="tc.toolStatus === Message.TOOL_STATUS.Done" color="#9ddb7f" :size="11" :border-radius="11">
+                  <n-icon><Checkmark/></n-icon>
+                </n-icon-wrapper>
+
+                <!-- 错误图标 -->
+                <n-icon-wrapper v-else-if="tc.toolStatus === Message.TOOL_STATUS.Error" color="#ff4d4f" :size="11" :border-radius="11">
+                  <n-icon><CloseOutline/></n-icon>
+                </n-icon-wrapper>
+              </div>
+
+            </div>
+          </div>
+        </transition>
+      </template>
     </VirtualMessageList>
 
     <!-- ================================ >>>[浮动面板堆栈] ================================ -->
@@ -272,6 +407,127 @@ function removeQueuedMessage(msgId: Message['id']) {
   position: relative;
   display: flex;
 
+  .empty-state {
+    opacity: 0.5;
+    img {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  // 流式传输指示器：显示 AI 思考动画和工具调用面板
+  .streaming-indicator {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 4px;
+
+
+    // AI 思考动画图片
+    .thinking-video {
+      width: 120px;
+      height: 213px;
+      border-radius: var(--radius-sm);
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .tool-calls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 213px;
+      overflow-y: auto;
+      padding-top: 4px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+
+      // 隐藏滚动条
+      &::-webkit-scrollbar {
+        display: none;
+      }
+
+      // 工具调用项：显示工具名称、预览、时长和状态
+      .tool-call-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        padding: 3px 8px;
+        background: var(--border-color);
+        border-radius: var(--radius-sm);
+
+        // 压缩状态项：更小的字体和更淡的颜色
+        &.compression-item {
+          color: var(--text-muted);
+          font-size: 10px;
+        }
+
+        .tool-call-icon {
+          flex-shrink: 0;
+          color: var(--text-muted);
+        }
+
+        .tool-call-name {
+          font-family: var(--font-code);
+          flex-shrink: 0;
+        }
+
+        // 工具调用参数预览：单行截断
+        .tool-call-preview {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 300px;
+          color: var(--text-muted);
+        }
+
+        .tool-call-spinner {
+          width: 10px;
+          height: 10px;
+          border: 1.5px solid var(--text-muted);
+          border-top-color: transparent;
+          border-radius: 50%;
+          animation: spin 0.6s linear infinite;
+          flex-shrink: 0;
+        }
+
+        .tool-call-duration {
+          font-size: 10px;
+          color: var(--text-muted);
+          font-family: var(--font-code);
+          margin-left: 4px;
+          flex-shrink: 0;
+        }
+
+        .tool-call-success-icon {
+          color: #52c41a;
+          flex-shrink: 0;
+          margin-left: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .tool-call-error-icon {
+          color: #ff4d4f;
+          flex-shrink: 0;
+          margin-left: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  }
+
   .message-float-stack {
     .queue-float-enter-active,
     .queue-float-leave-active {
@@ -282,13 +538,6 @@ function removeQueuedMessage(msgId: Message['id']) {
     .queue-float-leave-to {
       opacity: 0;
       transform: translateY(10px) scale(0.98);
-    }
-
-    // 队列旋转动画：轨道图标持续旋转
-    @keyframes queue-spin {
-      to {
-        transform: rotate(360deg);
-      }
     }
 
     position: absolute;
@@ -456,6 +705,23 @@ function removeQueuedMessage(msgId: Message['id']) {
         flex: 0 0 auto;
       }
     }
+
+    // 队列旋转动画：轨道图标持续旋转
+    @keyframes queue-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  }
+
+  // 淡入淡出过渡动画：用于流式传输指示器的显示/隐藏
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.4s ease;
+  }
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
   }
 }
 </style>

@@ -64,7 +64,7 @@ type AbortState = {
   // 是否已同步到服务器
   synced?: boolean
   // 是否超时
-  timeOut?: boolean
+  timedOut?: boolean
   // 消息
   message?: string
   // 错误信息
@@ -128,9 +128,9 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 会话 ID → 压缩状态映射
-   * 压缩状态按会话隔离，因为 socket 可以在后台会话保持连接的同时另一个聊天处于活跃状态
+   * - 压缩状态按会话隔离，因为 socket 可以在后台会话保持连接的同时另一个聊天处于活跃状态
    */
-  const compressStates = ref<Map<Session['id'], CompressionState>>(new Map())
+  const compressionStates = ref<Map<Session['id'], CompressionState>>(new Map())
 
   /** 会话 ID → 服务器报告的 isWorking 状态 */
   const serverWorking = ref<Set<Session['id']>>(new Set())
@@ -184,6 +184,12 @@ export const useChatStore = defineStore('chatStore', () => {
   /** 是否正在中断 */
   const isAborting = computed(() => abortState.value?.aborting === true)
 
+  /** 当前活跃会话的压缩状态 */
+  const compressionState = computed(() => {
+    const sid = activeSessionId.value
+    if (!sid) return
+    return compressionStates.value.get(sid) ?? null
+  })
 
   // ========== 内部状态 ==========
 
@@ -426,13 +432,13 @@ export const useChatStore = defineStore('chatStore', () => {
    */
   function setCompressionState(sessionId: Session['id'] | void, state: CompressionState | null) {
     if (!sessionId) return
-    const next = new Map(compressStates.value)
+    const next = new Map(compressionStates.value)
     if (state) {
       next.set(sessionId, state)
     } else {
       next.delete(sessionId)
     }
-    compressStates.value = next
+    compressionStates.value = next
   }
 
 
@@ -1360,7 +1366,7 @@ export const useChatStore = defineStore('chatStore', () => {
                   break
 
                 case 'abort.timeout':
-                  setAbortState({ aborting: true, synced: false, timeOut: true, message: (e as any).message })
+                  setAbortState({ aborting: true, synced: false, timedOut: true, message: (e as any).message })
                   break
 
                 case 'abort.completed':
@@ -1485,7 +1491,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
               // 5秒后自动清除压缩状态
               setTimeout(() => {
-                const state = compressStates.value.get(sid)
+                const state = compressionStates.value.get(sid)
                 if (state && !state.compressing) {
                   setCompressionState(sid, null)
                 }
@@ -2141,6 +2147,8 @@ export const useChatStore = defineStore('chatStore', () => {
     activePendingClarify,
     activePendingApproval,
     queuedUserMessages,
+    compressionState,
+    abortState,
 
     loadSessions,
     switchSession,

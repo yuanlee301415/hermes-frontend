@@ -1,6 +1,6 @@
 <!--
 Todo:
-- 虚拟滚动
+- [ ] 虚拟列表
 -->
 <script setup lang="ts">
 import type { Message } from '@/models/Message.ts'
@@ -26,10 +26,20 @@ function scrollToBottom() {
 <template>
   <div class="virtual-message-list-host" style="--virtual-list-padding: 20px;--virtual-row-gap: 16px;">
     <div class="virtual-message-list">
-      <div v-for="(item, idx) of messages" :key="item.id" class="virtual-row" :data-virtual-row="idx">
-        <slot :item="item" :idx="idx"></slot>
+      <template v-if="messages.length">
+        <div v-for="(item, idx) of messages" :key="item.id" class="virtual-row" :data-virtual-row="idx">
+          <slot name="item" :item="item" :idx="idx"></slot>
+        </div>
+      </template>
+
+      <div v-else class="virtual-message-list-empty">
+        <slot name="empty"></slot>
       </div>
+
+      <slot v-if="messages.length" name="after"></slot>
+
       <div ref="bottomRef"></div>
+
     </div>
   </div>
 </template>
@@ -55,6 +65,17 @@ function scrollToBottom() {
       max-width: 100%;
       padding-bottom: var(--virtual-row-gap);
     }
+    .virtual-message-list-empty {
+      position: absolute;
+      inset: var(--virtual-list-padding);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-width: 0;
+      min-height: 0;
+      pointer-events: none;
+    }
   }
+
 }
 </style>
