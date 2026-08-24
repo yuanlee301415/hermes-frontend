@@ -18,8 +18,7 @@ import { Session } from '@/models/Session.ts'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { Message } from '@/models/Message.ts'
 import { useToolTraceVisibility } from '@/composables/useToolTraceVisibility.ts'
-import { formatTokens } from '@/utils/formatTokens.ts'
-import { formatToolDurationSeconds } from '@/utils/format.ts'
+import { formatTokens, formatToolDurationSeconds } from '@/utils/format.ts'
 import thinkingImageDark from "@/assets/thinking-dark.gif";
 import thinkingImageLight from "@/assets/thinking-light.gif";
 import MessageItem from './MessageItem/index.vue'

@@ -22,7 +22,7 @@ import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { useAppStore } from '@/store/modules/app.ts'
 import { Attachment } from '@/models/Message.ts'
 import { Session } from '@/models/Session.ts'
-import { formatTokens } from '@/utils/formatTokens.ts'
+import { formatTokens } from '@/utils/format.ts'
 import { getContextLengthApi } from '@/api/sessions.ts'
 import { type BridgeCommand, BRIDGE_COMMANDS} from '../../shared/bridge-commands.ts'
 
