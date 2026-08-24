@@ -44,5 +44,5 @@ export function getDownloadUrl(filePath: string, fileName?: string): string {
   if (profileName) params.set('profile', profileName)
   const token = getApiKey()
   if (token) params.set('token', token)
-  return `${base}/api/hermes/download?${params.toString()}`
+  return `${base}api/hermes/download?${params.toString()}`
 }
