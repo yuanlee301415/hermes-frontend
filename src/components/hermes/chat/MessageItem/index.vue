@@ -20,11 +20,12 @@ import { parseThinking, countThinkingChars } from '@/utils/thinking-parser.ts'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { formatDurationMs } from '@/utils/format.ts'
 import { copyToClipboard } from '@/utils/clipboard.ts'
-import MarkdownRender from './MarkdownRender/index.vue'
-import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
-import { formatToolPayload, renderToolPayload } from '../shared/parse-tool.ts'
-import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../shared/highlight.ts'
+import MarkdownRender from '../MarkdownRender/index.vue'
+import { parseContentBlocks, getBlockText } from '../../shared/parse-message.ts'
+import { formatToolPayload, renderToolPayload } from '../../shared/parse-tool.ts'
+import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../../shared/highlight.ts'
 
+defineOptions({ name: 'MessageItem' })
 
 const TOOL_ARGS_PROPERTY_NAME: keyof Message = 'toolArgs'
 const TOOL_RESULT_PROPERTY_NAME: keyof Message = 'toolResult'
@@ -429,5 +430,5 @@ async function handleCopyMessage() {
 </template>
 
 <style scoped lang="less">
-@import "message-item";
+@import "style";
 </style>

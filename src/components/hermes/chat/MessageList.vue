@@ -22,7 +22,7 @@ import { formatTokens } from '@/utils/formatTokens.ts'
 import { formatToolDurationSeconds } from '@/utils/format.ts'
 import thinkingImageDark from "@/assets/thinking-dark.gif";
 import thinkingImageLight from "@/assets/thinking-light.gif";
-import MessageItem from './MessageItem.vue'
+import MessageItem from './MessageItem/index.vue'
 import VirtualMessageList from './VirtualMessageList.vue'
 
 defineOptions({ name: 'MessageList' })
