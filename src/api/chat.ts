@@ -144,6 +144,8 @@ export interface RunEvent {
   tool_call_id?: string
   // 工具调用时长
   duration?: number
+  // 工具参数
+  arguments: unknown
 }
 
 /**
@@ -552,7 +554,7 @@ export function startRunViaSocket(
     onRunCompleted(evt: RunEvent) {
       if (closed) return
       onEvent(evt)
-      if ((evt as any).queue_remaining > 0) return
+      if (evt.queue_remaining && evt.queue_remaining > 0) return
       closed = true
       removeTerminalSocketListeners()
       onDone()
@@ -560,7 +562,7 @@ export function startRunViaSocket(
     onRunFailed(evt: RunEvent) {
       if (closed) return
       onEvent(evt)
-      if ((evt as any).queue_remaining > 0) return
+      if (evt.queue_remaining && evt.queue_remaining > 0) return
       closed = true
       removeTerminalSocketListeners()
       onDone()
@@ -580,7 +582,7 @@ export function startRunViaSocket(
     onAbortCompleted(evt: RunEvent) {
       if (closed) return
       onEvent(evt)
-      if ((evt as any).queue_remaining > 0) return
+      if (evt.queue_remaining && evt.queue_remaining > 0) return
       closed = true
       removeTerminalSocketListeners()
       onDone()

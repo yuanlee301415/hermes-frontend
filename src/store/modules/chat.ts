@@ -1,6 +1,6 @@
 /*
 * Todo:
-*  - [ ] 修复使用 any 标注的 event
+*  - [ ] 修复 AbortState
 *  - [ ] 初始运行的逻辑
 * */
 
@@ -748,7 +748,7 @@ export const useChatStore = defineStore('chatStore', () => {
     // 忽略编码 Agent 的状态事件
     if ((evt as any).source === Session.SOURCE.CodingAgent && (evt as any).kind === 'status') return
 
-    const text = String((evt as any).text || (evt as any).message || '').trim()
+    const text = String(evt.text || evt.message || '').trim()
     if (!text) return
 
     const last = getSessionMessages(sid).at(-1)
@@ -1671,7 +1671,7 @@ export const useChatStore = defineStore('chatStore', () => {
               // 工具调用开始：创建或更新工具消息
               runHadToolActivity = true
               const msgs = getSessionMessages(sid)
-              const toolCallId = (evt as any).tool_call_id as string | undefined
+              const toolCallId = evt.tool_call_id
               // 找到相关的助手消息并结束流式
               const last = activeAssistantMessageId
                 ? msgs.find(_ => _.id === activeAssistantMessageId)
@@ -1688,7 +1688,7 @@ export const useChatStore = defineStore('chatStore', () => {
                 // 更新现有工具消息
                 updateMessage(sid, existingTool.id, {
                   toolName: evt.tool || evt.name,
-                  toolArgs: hasRuntimeToolPayload((evt as any).arguments) ? (evt as any).arguments : existingTool.toolArgs,
+                  toolArgs: hasRuntimeToolPayload(evt.arguments) ? evt.arguments : existingTool.toolArgs,
                   toolPreview: evt.preview || existingTool.toolPreview,
                   toolStatus: existingTool.toolStatus || Message.TOOL_STATUS.Running,
                 })
@@ -1703,7 +1703,7 @@ export const useChatStore = defineStore('chatStore', () => {
                 toolName: evt.tool || evt.name,
                 toolCallId,
                 toolPreview: evt.preview,
-                toolArgs: runtimeToolPayloadOrUndefined((evt as any).arguments),
+                toolArgs: runtimeToolPayloadOrUndefined(evt.arguments),
                 toolStatus: Message.TOOL_STATUS.Running,
               }))
               break
@@ -1713,16 +1713,16 @@ export const useChatStore = defineStore('chatStore', () => {
               // 工具调用完成：更新工具消息状态和结果
               runHadToolActivity = true
               const msgs = getSessionMessages(sid)
-              const toolCallId = (evt as any).tool_call_id as string | undefined
+              const toolCallId = evt.tool_call_id
               // 查找相关的工具消息（优先按 toolCallId，否则找运行中的工具）
               const toolMsgs = toolCallId
                 ? msgs.filter(_ => _.role === Message.ROLE.Tool && _.toolCallId === toolCallId)
                 : msgs.filter(_ => _.role === Message.ROLE.Tool && _.toolStatus === Message.TOOL_STATUS.Running)
               if (toolMsgs.length > 0) {
                 const last = toolMsgs.at(-1)
-                const output = runtimeToolPayloadOrUndefined((evt as any).output)
-                const hasError = (evt as any).error === true || runtimeToolOutputHasError(output)
-                const duration = (evt as any).duration
+                const output = runtimeToolPayloadOrUndefined(evt.output)
+                const hasError = evt.error || runtimeToolOutputHasError(output)
+                const duration = evt.duration
                 last?.id && updateMessage(sid, last.id, {
                   toolStatus: hasError ? Message.TOOL_STATUS.Error : Message.TOOL_STATUS.Done,
                   toolDuration: duration,
@@ -1770,9 +1770,7 @@ export const useChatStore = defineStore('chatStore', () => {
                   : completedAssistantMessageId
                     ? msgs.find(_ => _.id === completedAssistantMessageId)
                     : undefined
-                const parsedContent = typeof (evt as any).parsed_content === 'string'
-                  ? (evt as any).parsed_content
-                  : ''
+                const parsedContent = typeof evt.parsed_content === 'string' ? evt.parsed_content : ''
                 const parsedContentTrimmed = parsedContent.trim()
 
                 if (lastAssistant) {
@@ -2287,8 +2285,8 @@ export const useChatStore = defineStore('chatStore', () => {
           activeRunMarker = readRunMarker(evt)
 
           // 更新队列长度
-          if ((evt as any).queue_length > 0) {
-            queueLengths.value.set(sid, (evt as any).queue_length)
+          if (evt.queue_length && evt.queue_length > 0) {
+            queueLengths.value.set(sid, evt.queue_length)
           } else {
             queueLengths.value.delete(sid)
           }
@@ -2627,7 +2625,7 @@ export const useChatStore = defineStore('chatStore', () => {
             // 更新现有工具消息
             updateMessage(sid, existingTool.id, {
               toolName: evt.tool || evt.name,
-              toolArgs: hasRuntimeToolPayload((evt as any).arguments) ? (evt as any).arguments : existingTool.toolArgs,
+              toolArgs: hasRuntimeToolPayload(evt.arguments) ? evt.arguments : existingTool.toolArgs,
               toolPreview: evt.preview || existingTool.toolPreview,
               toolStatus: existingTool.toolStatus || Message.TOOL_STATUS.Running,
             })
@@ -2641,7 +2639,7 @@ export const useChatStore = defineStore('chatStore', () => {
               toolName: evt.tool || evt.name,
               toolCallId,
               toolPreview: evt.preview,
-              toolArgs: runtimeToolPayloadOrUndefined((evt as any).arguments),
+              toolArgs: runtimeToolPayloadOrUndefined(evt.arguments),
               toolStatus: Message.TOOL_STATUS.Running,
             })
           }
