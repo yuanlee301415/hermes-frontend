@@ -47,6 +47,14 @@ export interface ClientEvents {
   'connect': () => void
 }
 
+export type PeerMessage = {
+  id?: string | number
+  role?: string
+  content?: string
+  timestamp?: number
+  queued?: boolean
+}
+
 /*
  * 用于实时接收运行过程中的各类事件
  */
@@ -97,13 +105,7 @@ export interface RunEvent {
     queued?: boolean
   }>
   /** 广播给其他正在观看同一会话的窗口的用户消息 */
-  message?: {
-    id?: string | number
-    role?: string
-    content?: string
-    timestamp?: number
-    queued?: boolean
-  }
+  message?: PeerMessage | string
   command: 'clear'
   action?: 'clear' | 'title' | 'usage' | 'destroy',
   started?: boolean

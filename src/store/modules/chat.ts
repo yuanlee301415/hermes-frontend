@@ -22,7 +22,7 @@
 import { defineStore } from 'pinia'
 import { getSessionsApi } from '@/api/sessions.ts'
 import {
-  type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload,
+  type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload, type PeerMessage,
   resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify, respondToolApproval, onPeerUserMessage, unregisterSessionHandlers, registerSessionHandlers
 } from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
@@ -748,7 +748,7 @@ export const useChatStore = defineStore('chatStore', () => {
     // 忽略编码 Agent 的状态事件
     if ((evt as any).source === Session.SOURCE.CodingAgent && (evt as any).kind === 'status') return
 
-    const text = String(evt.text || evt.message || '').trim()
+    const text = String(evt.text || evt.message as string || '').trim()
     if (!text) return
 
     const last = getSessionMessages(sid).at(-1)
@@ -1037,7 +1037,7 @@ export const useChatStore = defineStore('chatStore', () => {
     }
 
     // 添加新的排队消息
-    const peer = evt.message
+    const peer = evt.message as PeerMessage
     const content = typeof peer?.content === 'string' ? peer.content : ''
     const msgId = peer?.id != null ? String(peer.id) : ''
     if (!msgId || !content.trim()) return
@@ -1101,7 +1101,7 @@ export const useChatStore = defineStore('chatStore', () => {
     const sid = evt.session_id
     if (!sid || activeSessionId.value !== sid || !activeSession.value) return
 
-    const peer = evt.message
+    const peer = evt.message as PeerMessage
     const content = typeof peer?.content === 'string' ? peer.content : ''
     if (!content.trim()) return
 
@@ -2107,7 +2107,7 @@ export const useChatStore = defineStore('chatStore', () => {
       queuedUserMessages.value.delete(sid)
       queueLengths.value.delete(sid)
       if (evt.clearHistory) {
-        const content = String(evt.message || '')
+        const content = String(evt.message as string || '')
         if (content) {
           addMessage(sid, new Message({
             id: uuid(),
@@ -2154,7 +2154,7 @@ export const useChatStore = defineStore('chatStore', () => {
     }
 
     // 添加命令消息（如果有消息内容）
-    const message = String(evt.message || '')
+    const message = String(evt.message as string || '')
     // console.log('handleSessionCommandEvent:', { target, action, command, evt, message })
     if (message) {
       addMessage(sid, new Message({
