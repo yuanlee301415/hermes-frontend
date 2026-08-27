@@ -624,8 +624,8 @@ export function startRunViaSocket(
   sessionEventHandlers.set(sid, handlers)
 
   // 发送运行请求
-  socket.emit('run', body)
   console.warn('发送运行请求:', { body })
+  socket.emit('run', body)
 
   // 返回取消句柄
   return {
@@ -979,4 +979,56 @@ export function respondToolApproval(sid: string, approvalId: string, choice: 'on
     approval_id: approvalId,
     choice
   })
+}
+
+/**
+ * 注销会话事件处理器
+ * @param sessionId 会话 ID
+ */
+export function unregisterSessionHandlers(sessionId: string): void {
+  sessionEventHandlers.delete(sessionId)
+}
+
+/**
+ * 注册会话事件处理器
+ * @param sessionId 会话 ID
+ * @param handlers 事件处理函数对象
+ * @returns 清理函数，用于注销处理器
+ */
+export function registerSessionHandlers(
+  sessionId: string,
+  handlers: {
+    onMessageDelta: (event: RunEvent) => void
+    onReasoningDelta: (event: RunEvent) => void
+    onThinkingDelta: (event: RunEvent) => void
+    onReasoningAvailable: (event: RunEvent) => void
+    onToolStarted: (event: RunEvent) => void
+    onToolCompleted: (event: RunEvent) => void
+    onSubagentEvent?: (event: RunEvent) => void
+    onRunStarted: (event: RunEvent) => void
+    onRunCompleted: (event: RunEvent) => void
+    onRunFailed: (event: RunEvent) => void
+    onCompressionStarted: (event: RunEvent) => void
+    onCompressionCompleted: (event: RunEvent) => void
+    onAbortStarted: (event: RunEvent) => void
+    onAbortTimeout?: (event: RunEvent) => void
+    onAbortCompleted: (event: RunEvent) => void
+    onUsageUpdated: (event: RunEvent) => void
+    onAgentEvent?: (event: RunEvent) => void
+    onSessionCommand?: (event: RunEvent) => void
+    onSessionTitleUpdated?: (event: RunEvent) => void
+    onRunQueued?: (event: RunEvent) => void
+    onApprovalRequested?: (event: RunEvent) => void
+    onApprovalResolved?: (event: RunEvent) => void
+    onPeerUserMessage?: (event: RunEvent) => void
+    onClarifyRequested?: (event: RunEvent) => void
+    onClarifyResolved?: (event: RunEvent) => void
+  }
+): () => void {
+  sessionEventHandlers.set(sessionId, handlers)
+
+  // 返回清理函数
+  return () => {
+    sessionEventHandlers.delete(sessionId)
+  }
 }
