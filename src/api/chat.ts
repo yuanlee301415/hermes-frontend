@@ -1036,3 +1036,15 @@ export function registerSessionHandlers(
     sessionEventHandlers.delete(sessionId)
   }
 }
+
+/**
+ * 订阅会话标题更新事件（全局）
+ * @param handler 事件处理函数
+ * @returns 取消订阅函数
+ */
+export function onSessionTitleUpdate(handler: (event: RunEvent) => void): () => void {
+  sessionTitleUpdatedHandlers.add(handler)
+  return () => {
+    sessionTitleUpdatedHandlers.delete(handler)
+  }
+}

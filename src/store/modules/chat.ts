@@ -22,7 +22,8 @@ import { defineStore } from 'pinia'
 import { getSessionsApi } from '@/api/sessions.ts'
 import {
   type RunEvent, type ContentBlock, type StartRunRequest, type ResumeSessionPayload, type PeerMessage,
-  resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify, respondToolApproval, onPeerUserMessage, unregisterSessionHandlers, registerSessionHandlers
+  resumeSession, startRunViaSocket, getChatRunSocket, onSessionCommand, respondClarify, respondToolApproval, onPeerUserMessage, unregisterSessionHandlers,
+  registerSessionHandlers, onSessionTitleUpdate
 } from '@/api/chat.ts'
 import { Session } from '@/models/Session.ts'
 import { Message, Attachment } from '@/models/Message.ts'
@@ -198,7 +199,6 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /*
   * Todo: 初始运行的逻辑
-  *  - [ ] 注册会话标题更新处理器
   *  - [ ] 标签页可见性
   *  - [ ] 轻度后台轮询用于会话列表实时同步
   *  - [ ] 当会话从服务器新获取时
@@ -209,6 +209,9 @@ export const useChatStore = defineStore('chatStore', () => {
 
   // 注册对等用户消息处理器
   onPeerUserMessage(handlePeerUserMessage)
+
+  // 注册会话标题更新处理器
+  onSessionTitleUpdate(applyGeneratedSessionTitle)
 
   /**
    * 加载会话列表
