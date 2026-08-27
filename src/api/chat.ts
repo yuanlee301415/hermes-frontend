@@ -139,6 +139,11 @@ export interface RunEvent {
   description?: string
   // 允许永久生效
   allow_permanent?: boolean
+
+  // 工具调用 ID
+  tool_call_id?: string
+  // 工具调用时长
+  duration?: number
 }
 
 /**

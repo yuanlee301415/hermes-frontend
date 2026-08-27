@@ -1,10 +1,10 @@
 /*
 * Todo:
+*  - [ ] 修复使用 any 标注的 event
 *  - [ ] 初始运行的逻辑
 *  - [ ] 页面刷新后恢复正在进行的运行
 *  - [ ] 处理对等用户消息
 *  - [ ] 消息队列
-*  - [ ] 处理重放事件
 * */
 
 /**
@@ -388,12 +388,99 @@ export const useChatStore = defineStore('chatStore', () => {
             }
           }
 
-          // Todo: 处理重放事件（压缩状态等）
-          if (data.events?.length) {
-            console.error('Todo: data.events')
-          }
-
           activeSession.value = target
+
+          // 处理重放事件（压缩状态等）
+          if (data.events?.length) {
+            console.log('switchSession>data.events:', data.events)
+            for (const evt of data.events) {
+              const e = evt.data
+              if (e.event === 'compression.started') {
+                setCompressionState(sessionId, {
+                  compressing: true,
+                  messageCount: e.message_count || 0,
+                  beforeTokens: e.token_count || 0,
+                  afterTokens: 0,
+                  compressed: false
+                })
+              } else if (e.event === 'compression.completed') {
+                const afterTokens = e.contextTokens || e.afterTokens || 0
+                setCompressionState(sessionId, {
+                  compressing: false,
+                  messageCount: e.totalMessages || 0,
+                  beforeTokens: e.beforeTokens || 0,
+                  afterTokens,
+                  compressed: e.compressed ?? false,
+                  error: e.error
+                })
+                if (e.contextTokens != null) {
+                  target.contextTokens = e.contextTokens
+                }
+              } else if (e.event === 'abort.started') {
+                setAbortState({ aborting: true, synced: false })
+              } else if (e.event === 'abort.timeout') {
+                setAbortState({ aborting: true, synced: false, timedOut: true, message: (e as any).message })
+              } else if (e.event === 'abort.completed') {
+                setAbortState({ aborting: false, synced: e.synced ?? false })
+              } else if (e.event === 'approval.requested') {
+                setPendingApproval({ ...e, session_id: sessionId })
+              } else if (e.event === 'approval.resolved') {
+                clearPendingApproval({ ...e, session_id: sessionId })
+              } else if (e.event === 'clarify.requested') {
+                setPendingClarify({ ...e, session_id: sessionId })
+              } else if (e.event === 'clarify.resolved') {
+                clearPendingClarify({ ...e, session_id: sessionId })
+              } else if (e.event === 'run.failed') {
+                addAgentErrorMessage(sessionId, e.error)
+                serverWorking.value.delete(sessionId)
+                queueLengths.value.delete(sessionId)
+              } else if (e.event === 'agent.event' || e.event === 'run.reattach_failed') {
+                handleAgentEvent(e)
+              } else if (e.event === 'tool.started') {
+                // 工具开始事件处理
+                const msgs = getSessionMessages(sessionId)
+                const toolCallId = e.tool_call_id
+                const existingTool = toolCallId ? msgs.find(_ => _.toolCallId === toolCallId && _.role === Message.ROLE.Tool) : null
+                if (existingTool) {
+                  updateMessage(sessionId, existingTool.id, {
+                    toolName: e.tool || e.name,
+                    toolArgs: hasRuntimeToolPayload((e as any).arguments ? (e as any).arguments : existingTool.toolArgs),
+                    toolPreview: e.preview || existingTool.toolPreview,
+                    toolStatus: existingTool.toolStatus || Message.TOOL_STATUS.Running
+                  })
+                } else {
+                  addMessage(sessionId, new Message({
+                    id: uuid(),
+                    role: Message.ROLE.Tool,
+                    content: '',
+                    timestamp: Date.now(),
+                    toolName: e.tool || e.name,
+                    toolCallId,
+                    toolPreview: e.preview,
+                    toolArgs: runtimeToolPayloadOrUndefined((e as any).arguments),
+                    toolStatus: Message.TOOL_STATUS.Running
+                  }))
+                }
+              } else if (e.event === 'tool.completed') {
+                // 工具完成事件处理
+                const msgs = getSessionMessages(sessionId)
+                const toolCallId = e.tool_call_id
+                const toolMsgs = toolCallId
+                  ? msgs.filter(_ => _.role === Message.ROLE.Tool && _.toolCallId === toolCallId)
+                  : msgs.filter(_ => _.role === Message.ROLE.Tool && _.toolStatus === Message.TOOL_STATUS.Running)
+                if (toolMsgs.length) {
+                  const output = runtimeToolPayloadOrUndefined(e.output)
+                  updateMessage(sessionId, toolMsgs.at(-1)!.id, {
+                    toolStatus: e.error || runtimeToolOutputHasError(output) ? Message.TOOL_STATUS.Error : Message.TOOL_STATUS.Done,
+                    toolDuration: e.duration,
+                    toolResult: output
+                  })
+                }
+              } else if (String(e.event || '').startsWith('subagent.')) {
+                console.error('Todo: 子 Agent 事件处理:\n', e)
+              }
+            }
+          }
           // console.log('resumeSession>set activeSession:', activeSession.value)
           resolve()
         }, activeSession.value?.profile)
