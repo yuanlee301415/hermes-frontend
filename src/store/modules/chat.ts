@@ -1,6 +1,5 @@
 /*
 * Todo:
-*  - [ ] 修复 AbortState
 *  - [ ] 初始运行的逻辑
 * */
 
@@ -510,7 +509,7 @@ export const useChatStore = defineStore('chatStore', () => {
   }
 
   /** 设置中断状态 */
-  function setAbortState(state: typeof abortState.value) {
+  function setAbortState(state: AbortState | null) {
     abortState.value = state
   }
 
