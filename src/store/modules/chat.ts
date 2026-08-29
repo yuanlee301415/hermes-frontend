@@ -1,8 +1,3 @@
-/*
-* Todo:
-*  - [ ] 初始运行的逻辑
-* */
-
 /**
  * Chat Store - 核心聊天状态管理模块
  *
@@ -31,10 +26,10 @@ import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { useAppStore } from '@/store/modules/app.ts'
 import { uuid } from '@/utils/uuid.ts'
 import { detectThinkingBoundary } from '@/utils/thinking-parser.ts'
-import { ACTIVE_SESSION_KEY_PREFIX } from '@/constants/storage-keys.ts'
+import { ACTIVE_SESSION_KEY_PREFIX, REASONING_LS_PREFIX } from '@/constants/storage-keys.ts'
 import { hasRuntimeToolPayload, runtimeToolPayloadOrUndefined, mapHermesMessages, readRunMarker, getReplayRunMarker, resolveResumedAssistantState,
   errorMessageText, runtimeToolOutputHasError, normalizeQueuedUserMessages } from '../shared/chat.ts'
-import { getItemBestEffort, removeItem, setItemBestEffort } from '../shared/storage.ts'
+import { getItemBestEffort, removeItem, setItemBestEffort, getStoredReasoningEffort } from '../shared/storage.ts'
 
 /**
  * 压缩状态接口 - 会话上下文压缩的状态追踪
@@ -197,11 +192,6 @@ export const useChatStore = defineStore('chatStore', () => {
   // 不持久化；会话切换时清除。
   const thinkingObservation = new Map<string, {startedAt?: number, endedAt?: number}>
 
-  /*
-  * Todo: 初始运行的逻辑
-  *  - [ ] 当会话从服务器新获取时
-  * */
-
   // 注册全局会话命令处理器
   onSessionCommand(handleGlobalSessionCommand)
 
@@ -210,6 +200,18 @@ export const useChatStore = defineStore('chatStore', () => {
 
   // 注册会话标题更新处理器
   onSessionTitleUpdate(applyGeneratedSessionTitle)
+
+  // 当会话从服务器新获取时，将 reasoningEffort 恢复到会话上
+  watch(sessions, list => {
+    for (const s of list) {
+      if (s.reasoningEffort === undefined) {
+        const stored = getStoredReasoningEffort(REASONING_LS_PREFIX + s.id)
+        if (stored) {
+          s.reasoningEffort = stored
+        }
+      }
+    }
+  })
 
   /**
    * 加载会话列表

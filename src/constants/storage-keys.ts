@@ -11,3 +11,6 @@ export const ACTIVE_SESSION_KEY_PREFIX = 'hermes_active_session_'
 
 // 侧边栏折叠
 export const SIDEBAR_COLLAPSED_KEY = 'hermes_sidebar_collapsed'
+
+// 推理强度
+export const REASONING_LS_PREFIX = 'hermes:reasoning_effort:'

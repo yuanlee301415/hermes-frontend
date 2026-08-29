@@ -90,3 +90,14 @@ export function recoverStorageQuota(storageKey: string){
     // 忽略错误
   }
 }
+
+/**
+ * 获取存储的推理强度
+ */
+export function getStoredReasoningEffort(key: string) {
+  try {
+    return localStorage.getItem(key) ?? undefined
+  } catch {
+    return undefined
+  }
+}
