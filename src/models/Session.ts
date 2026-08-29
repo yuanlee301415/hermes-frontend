@@ -186,6 +186,16 @@ export class Session {
   static PROVIDER = PROVIDER
   static API_MODE = API_MODE
 
+  /**
+   * 将 Hermes 后端会话摘要转换为客户端会话格式
+   * - 主要处理：
+   * 1. 时间戳转换（秒 -> 毫秒）
+   * 2. 字段名映射（snake_case -> camelCase）
+   * 3. 编码 Agent 模式判断
+   * 4. 默认值设置
+   * @param list Hermes 后端会话摘要列表
+   * @returns 客户端会话对象
+   */
   static fromSummary(list: SessionSummary[]): Session[] {
     return list.map(_ => {
       // 判断编码 Agent 模式

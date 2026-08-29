@@ -15,8 +15,9 @@ const routeSessionId = computed(() => {
   return typeof value === 'string' && value.trim() ? value : undefined
 })
 
+let refreshTimer: ReturnType<typeof setTimeout> | undefined
+
 watch(routeSessionId, async (sessionId) => {
-  console.log('ChatView>watch>routeSessionId:', sessionId)
   if (!chatStore.sessionsLoaded) return
 
   if (!sessionId) {
@@ -40,6 +41,11 @@ onMounted(async () => {
     profileStore.fetchProfiles(),
   ])
   await loadRouteSession()
+  void refreshSessionList()
+})
+
+onUnmounted(() => {
+  clearTimeout(refreshTimer)
 })
 
 async function loadRouteSession() {
@@ -51,6 +57,22 @@ async function loadRouteSession() {
   }
 }
 
+/**
+ * 轻度后台轮询用于会话列表实时同步（覆盖通过 CLI/Telegram 在 VM 上创建的会话）。
+ * - 仅在标签可见且非流式传输时运行，因此开销低且不会中断活跃运行。
+ * - visibilitychange 处理从隐藏唤醒的情况；此处理"保持打开并观察"的情况。
+ * */
+async function refreshSessionList() {
+  try {
+    if (document?.visibilityState !== 'visible' || chatStore.isStreaming) return
+    if (!refreshTimer) return // 初始加载时，首次不执行
+    await chatStore.refreshSessionListOnly()
+  } finally {
+    refreshTimer = setTimeout(() => {
+      refreshSessionList()
+    }, 1000 * 10)
+  }
+}
 </script>
 
 <template>

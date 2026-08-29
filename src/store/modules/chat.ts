@@ -200,7 +200,6 @@ export const useChatStore = defineStore('chatStore', () => {
   /*
   * Todo: 初始运行的逻辑
   *  - [ ] 标签页可见性
-  *  - [ ] 轻度后台轮询用于会话列表实时同步
   *  - [ ] 当会话从服务器新获取时
   * */
 
@@ -2838,6 +2837,71 @@ export const useChatStore = defineStore('chatStore', () => {
     })
   }
 
+  /**
+   * 仅刷新会话列表元数据（标题、排序、新增/删除的会话）
+   * - 不切换活跃会话，不重新加载消息。用于实时同步，使得在其他地方（CLI、Telegram、其他设备）创建的会话能够自动显示。流式传输期间会跳过以避免抖动
+   * @param profile 可选的 profile 过滤
+   */
+  async function refreshSessionListOnly(profile?: string): Promise<void> {
+    if (isStreaming.value || isLoadingSessions.value) return
+
+    try {
+      const list = await getSessionsApi(undefined, undefined, profile ?? sessionProfileFilter.value)
+      const incoming = Session.fromSummary(list)
+      const incomingIds = new Set(incoming.map(_ => _.id))
+      const existingById = new Map(sessions.value.map(_ => [_.id, _]))
+
+      // 构建新数组：重用现有对象（保持引用一致性），插入真正新的会话
+      const next: Session[] = []
+      for (const fresh of incoming) {
+        const existing = existingById.get(fresh.id)
+        if (existing) {
+          // 原地更新标量元数据
+          Object.assign<Session, Partial<Session>>(existing, {
+            title: fresh.title,
+            source: fresh.source,
+            updatedAt: fresh.updatedAt,
+            lastActiveAt: fresh.lastActiveAt,
+            endedAt: fresh.endedAt,
+            model: fresh.model,
+            provider: fresh.provider,
+            messageCount: fresh.messageCount,
+            inputTokens: fresh.inputTokens,
+            outputTokens: fresh.outputTokens,
+            workspace: fresh.workspace,
+          })
+          // messageTotal：保留服务器计数和已加载计数中的较大值，避免会话中途缩小到已渲染消息以下
+          if (fresh.messageTotal != null) {
+            existing.messageTotal = Math.max(fresh.messageTotal, existing.loadedMessageCount ?? 0)
+          }
+          next.push(existing)
+        } else {
+          next.push(fresh)
+        }
+      }
+
+      // 即使服务器不再列出活跃会话，也要保留它（不要在用户正在查看时移除）
+      const activeId = activeSessionId.value
+      if (activeId && !incomingIds.has(activeId)) {
+        const keep = existingById.get(activeId)
+        if (keep) next.push(keep)
+      }
+
+      sessions.value = next
+
+      // 防御性：重新绑定 activeSession 到数组中的同一对象，以防上面的操作改变了数组成员
+      if (activeId) {
+        const again = sessions.value.find(_ => _.id === activeId)
+        if (again && activeSession.value !== again) {
+          activeSession.value = again
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh session list:', err)
+    }
+  }
+
+
   return {
     sessions,
     sessionsLoaded,
@@ -2862,6 +2926,7 @@ export const useChatStore = defineStore('chatStore', () => {
     getThinkingObservation,
     respondToClarify,
     respondApproval,
-    removeQueuedMessage
+    removeQueuedMessage,
+    refreshSessionListOnly
   }
 })
