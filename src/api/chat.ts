@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client'
+import type { HermesMessage } from '@/api/sessions.ts'
 import { ACTIVE_PROFILE_NAME_KEY } from '@/constants/storage-keys.ts'
 import { getApiKey, getBaseUrlValue } from '@/api/client.ts'
 
@@ -156,7 +157,7 @@ export interface RunEvent {
  */
 export interface ResumeSessionPayload {
   session_id: string
-  messages: any[]
+  messages: HermesMessage[]
   messageTotal?: number
   messageLoadedCount?: number
   messagePageLimit?: number

@@ -42,10 +42,12 @@ onMounted(async () => {
   ])
   await loadRouteSession()
   void refreshSessionList()
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onUnmounted(() => {
   clearTimeout(refreshTimer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
 async function loadRouteSession() {
@@ -72,6 +74,13 @@ async function refreshSessionList() {
       refreshSessionList()
     }, 1000 * 10)
   }
+}
+
+// 标签页可见性：返回前台时重新同步
+function onVisibilityChange() {
+  // 刷新会话列表（CLI、Telegram、其他设备创建的会话）
+  if (document.visibilityState !== 'visible') return
+  chatStore.reloadActivatedSession()
 }
 </script>
 

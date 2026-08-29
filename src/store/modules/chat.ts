@@ -199,7 +199,6 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /*
   * Todo: 初始运行的逻辑
-  *  - [ ] 标签页可见性
   *  - [ ] 当会话从服务器新获取时
   * */
 
@@ -2901,6 +2900,48 @@ export const useChatStore = defineStore('chatStore', () => {
     }
   }
 
+  /**
+   * 重新加载当前会话
+   */
+  function reloadActivatedSession() {
+    // 刷新会话列表（CLI、Telegram、其他设备创建的会话）
+    if (isStreaming.value) return
+
+    void refreshSessionListOnly()
+
+    const sid = activeSessionId.value
+    if (!sid) return
+
+    // 重新加载当前会话的消息
+    resumeSession(sid, data => {
+      if (data.isWorking) {
+        serverWorking.value.add(sid)
+      } else {
+        serverWorking.value.delete(sid)
+        setCompressionState(sid, null)
+      }
+
+      if (data.isAborting) {
+        setAbortState({ aborting: true, synced: false })
+      } else if (!data.isWorking) {
+        setAbortState(null)
+      }
+
+      if (data.messages?.length && activeSession.value) {
+        const messageTotal = data.messageTotal ?? activeSession.value.messageCount ?? activeSession.value.loadedMessageCount
+        const loadedMessageCount = data.messageLoadedCount ?? data.messages.length
+        Object.assign<Session, Partial<Session>>(activeSession.value, {
+          messages: mapHermesMessages(data.messages),
+          loadedMessageCount,
+          messageTotal,
+          messageCount: messageTotal,
+          hasMoreBefore: data.hasMoreBefore ?? loadedMessageCount < messageTotal!
+        })
+        resumeServerWorkingRun(sid)
+      }
+    }, activeSession.value?.profile)
+  }
+
 
   return {
     sessions,
@@ -2927,6 +2968,7 @@ export const useChatStore = defineStore('chatStore', () => {
     respondToClarify,
     respondApproval,
     removeQueuedMessage,
-    refreshSessionListOnly
+    refreshSessionListOnly,
+    reloadActivatedSession
   }
 })
