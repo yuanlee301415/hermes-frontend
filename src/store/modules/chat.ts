@@ -11,8 +11,9 @@
  * - 澄清请求：处理 AI 的追问
  * - 队列机制：支持消息排队，避免并发冲突
  * - 跨端同步：支持 CLI/Telegram/多设备创建的会话实时同步
- * - 语音播放：支持消息自动语音合成
  */
+
+import type { CompressionState, AbortState, PendingApproval, PendingClarify } from '@/store/typing.ts'
 import { defineStore } from 'pinia'
 import { getSessionsApi } from '@/api/sessions.ts'
 import {
@@ -31,152 +32,98 @@ import { hasRuntimeToolPayload, runtimeToolPayloadOrUndefined, mapHermesMessages
   errorMessageText, runtimeToolOutputHasError, normalizeQueuedUserMessages } from '../shared/chat.ts'
 import { getItemBestEffort, removeItem, setItemBestEffort, getStoredReasoningEffort } from '../shared/storage.ts'
 
-/**
- * 压缩状态接口 - 会话上下文压缩的状态追踪
- */
-interface CompressionState {
-  // 是否正在压缩中
-  compressing: boolean
-  // 参与压缩的消息数
-  messageCount: number
-  // 压缩前的 Token 数
-  beforeTokens: number
-  // 压缩后的 Token 数
-  afterTokens: number
-  // 是否成功压缩
-  compressed: boolean
-  // 压缩错误信息
-  error?: string
-}
-
-/** 中断状态 */
-type AbortState = {
-  // 是否正在中断中
-  aborting: boolean
-  // 是否已同步到服务器
-  synced?: boolean
-  // 是否超时
-  timedOut?: boolean
-  // 消息
-  message?: string
-  // 错误信息
-  error?: string
-}
-
-/**
- * 待审批请求接口 - 工具执行权限请求
- *
- * 当 AI 需要执行敏感操作（如写入内存）时，会向用户发送审批请求
- */
-export interface PendingApproval {
-  sessionId: Session['id'] // 会话 ID
-  approvalId: string // 审批 ID
-  command: string // 请求执行的命令
-  description: string // 请求描述
-  choices: Array<'once' | 'session' | 'always' | 'deny'> // 用户可选的审批选项
-  allowPermanent: boolean // 是否允许永久授权（always）
-  isMemoryWrite: boolean // 是否为内存写入操作
-  requestedAt: number // 请求时间戳
-}
-
-/**
- * 待澄清请求接口 - AI 的追问
- * - 当 AI 需要更多信息才能继续回答时，会发送澄清请求
- */
-export interface PendingClarify {
-  sessionId: Session['id'] // 会话 ID
-  clarifyId: string // 澄清请求 ID
-  question: string // 追问问题
-  choices: string[] | null // 可选答案列表（null 表示自由输入）
-  timeoutMs: number // 超时时间（毫秒）
-  requestedAt: number // 请求时间戳
-}
-
 const DEFAULT_PROFILE_NAME = 'default'
 
 export const useChatStore = defineStore('chatStore', () => {
   const profileStore = useProfilesStore()
   const appStore = useAppStore()
 
-  /** 会话列表 */
+  // 会话列表
   const sessions = ref<Session[]>([])
-  /** 当前活跃会话 ID */
+
+  // 当前活跃会话 ID
   const activeSessionId = ref<Session['id']>()
-  /** 当前聚焦的消息 ID（用于滚动定位） */
+
+  // 当前聚焦的消息 ID（用于滚动定位）
   const focusSessionId = ref<Message['id']>()
-  /** 当前会话列表的 Profile 过滤器 */
+
+  // 当前会话列表的 Profile 过滤器
   const sessionProfileFilter = ref<string|undefined>()
-  /** 是否正在加载会话列表 */
+
+  // 是否正在加载会话列表
   const isLoadingSessions = ref(false)
-  /** 是否正在加载消息 */
+
+  // 是否正在加载消息
   const isLoadingMessages = ref(false)
-  /** 会话列表是否已加载 */
+
+  // 会话列表是否已加载
   const sessionsLoaded = ref(false)
-  /** 当前活跃会话对象 */
+
+  // 当前活跃会话对象
   const activeSession = ref<Session|null>(null)
-  /** 当前活跃会话的消息列表 */
+
+  // 当前活跃会话的消息列表
   const messages = computed<Message[]>(() => activeSession.value?.messages || [])
 
-
-  /**
+  /*
    * 会话 ID → 压缩状态映射
    * - 压缩状态按会话隔离，因为 socket 可以在后台会话保持连接的同时另一个聊天处于活跃状态
    */
   const compressionStates = ref<Map<Session['id'], CompressionState>>(new Map())
 
-  /** 会话 ID → 服务器报告的 isWorking 状态 */
+  // 会话 ID → 服务器报告的 isWorking 状态
   const serverWorking = ref<Set<Session['id']>>(new Set())
 
-  /** 会话 ID → 排队消息数量 */
+  // 会话 ID → 排队消息数量
   const queueLengths = ref<Map<Session['id'], number>>(new Map())
 
-  /** 会话 ID → 已排队但尚未在对话中显示的用户消息 */
+  // 会话 ID → 已排队但尚未在对话中显示的用户消息
   const queueUserMessages = ref<Map<Session['id'], Message[]>>(new Map())
 
-  /** 会话 ID → 流式状态映射（包含 abort 方法） */
+  // 会话 ID → 流式状态映射（包含 abort 方法）
   const streamStates = ref<Map<Session['id'], {abort: () => void}>>(new Map())
 
-  /** 会话 ID → 已排队但尚未在对话中显示的用户消息 */
+  // 会话 ID → 已排队但尚未在对话中显示的用户消息
   const queuedUserMessages = ref<Map<Session['id'], Message[]>>(new Map())
 
-  /** 会话 ID → 服务器报告已出队但对等消息尚未到达的队列 ID 集合 */
+  // 会话 ID → 服务器报告已出队但对等消息尚未到达的队列 ID 集合
   const dequeueQueueIds = ref<Map<Session['id'], Set<Message['id']>>>(new Map())
 
-  /** 会话 ID → 待审批请求 */
+  // 会话 ID → 待审批请求
   const pendingApprovals = ref<Map<Session['id'], PendingApproval>>(new Map())
 
-  /** 会话 ID → 待澄清请求 */
+  // 会话 ID → 待澄清请求
   const pendingClarifies = ref<Map<Session['id'], PendingClarify>>(new Map())
 
-  /** 当前活跃会话的待澄清请求 */
+  // 当前活跃会话的待澄清请求
   const activePendingClarify = computed(() => {
     const sid = activeSessionId.value
     return sid ? pendingClarifies.value.get(sid) : null
   })
 
-  /** 当前活跃会话的待审批请求 */
+  // 当前活跃会话的待审批请求
   const activePendingApproval = computed(() => {
     const sid = activeSessionId.value
     return sid ? pendingApprovals.value.get(sid) : null
   })
 
-  /** 是否正在流式传输（客户端或服务器有活跃运行） */
+  // 是否正在流式传输（客户端或服务器有活跃运行）
   const isStreaming = computed(() => {
     const sid = activeSessionId.value
     if (!sid) return false
     return streamStates.value.has(sid) || serverWorking.value.has(sid)
   })
 
-  /** 是否有活跃运行（与 isStreaming 等价） */
+  // 是否有活跃运行（与 isStreaming 等价）
   const isRunActive = computed(() => isStreaming.value)
 
-  /** 中断状态 */
+  // 中断状态
   const abortState = ref<AbortState | null>(null)
 
-  /** 是否正在中断 */
+  // 是否正在中断
   const isAborting = computed(() => abortState.value?.aborting === true)
 
-  /** 当前活跃会话的压缩状态 */
+  // 当前活跃会话的压缩状态
   const compressionState = computed(() => {
     const sid = activeSessionId.value
     if (!sid) return
@@ -185,7 +132,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   // ========== 内部状态 ==========
 
-  /** 已处理过的会话命令事件集合（防止重复处理） */
+  // 已处理过的会话命令事件集合（防止重复处理）
   const seenSessionCommandEvents = new WeakSet<RunEvent>()
 
   // 活跃流式传输期间 <think> 边界的临时观察。
@@ -215,15 +162,12 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 加载会话列表
-   *
-   * 从服务器获取会话列表，保留已加载的消息，然后根据优先级选择并切换到目标会话。
-   *
-   * 会话恢复优先级（从高到低）：
+   * - 从服务器获取会话列表，保留已加载的消息，然后根据优先级选择并切换到目标会话。
+   * - 会话恢复优先级（从高到低）：
    * 1. preferredSessionId（路由指定的会话）
    * 2. currentId（当前内存中的会话）
    * 3. storedId（本地存储的会话）
-   * 4. 最新会话
-   *
+   * 4. 最新会话   *
    * @param profile 可选的 profile 过滤
    * @param preferredSessionId 首选会话 ID（路由指定）
    */
@@ -276,15 +220,12 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 切换到指定会话
-   *
-   * 切换会话的流程：
    * 1. 清除之前的思考观察
    * 2. 更新活跃会话 ID 和本地存储
    * 3. 通过 Socket.IO resume 加载消息
    * 4. 处理恢复的状态（工作状态、队列、压缩、中断、审批等）
    * 5. 处理重放事件（压缩、中断、工具调用等）
    * 6. 恢复正在进行中的运行事件监听
-   *
    * @param sessionId 目标会话 ID
    * @param focusId 可选的聚焦消息 ID
    */
@@ -498,8 +439,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 清除当前活跃会话
-   *
-   * 重置所有相关状态，包括活跃会话、聚焦消息、中断状态、压缩状态，并清除本地存储
+   * - 重置所有相关状态，包括活跃会话、聚焦消息、中断状态、压缩状态，并清除本地存储
    */
   function clearActiveSession() {
     const sid = activeSessionId.value
@@ -532,10 +472,8 @@ export const useChatStore = defineStore('chatStore', () => {
     compressionStates.value = next
   }
 
-
   /**
    * 清除指定会话的思考观察数据
-   *
    * messageId 与 sessionId 的关联未单独持有；方案是切换会话时一律清空。
    * 这符合 spec 定义：observation 是"当前会话范围内"的 transient 状态。
    **/
@@ -545,9 +483,8 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 获取当前 profile 名称，用于隔离缓存
-   *
-   * 从 profiles store 的 activeProfileName（同步 localStorage）读取，
-   * 避免异步加载导致 chat store 初始化时拿到 null。
+   * - 从 profiles store 的 activeProfileName（同步 localStorage）读取
+   * - 避免异步加载导致 chat store 初始化时拿到 null
    * @returns profile 名称，默认为 'default'
    */
   function getProfileName(): string {
@@ -561,9 +498,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 替换队列中的用户消息
-   *
-   * 合并现有消息的附件（避免丢失本地文件引用），并更新队列长度。
-   *
+   * - 合并现有消息的附件（避免丢失本地文件引用），并更新队列长度
    * @param sid 会话 ID
    * @param messages 新的消息列表
    */
@@ -673,7 +608,6 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 第一次见到某条消息的 reasoning 文本时，标记 startedAt
-   *
    * @param msgId 消息 ID
    */
   function noteReasoningStart(msgId: Message['id']) {
@@ -686,7 +620,6 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 内容首次到达（视为推理结束）或显式收到 reasoning.available 时，标记 endedAt
-   *
    * @param msgId 消息 ID
    */
   function noteReasoningEnd(msgId: Message['id']) {
@@ -700,10 +633,8 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 添加 Agent 错误消息
-   *
-   * 如果最后一条消息正在流式传输，则更新它为错误状态；
-   * 否则添加一条新的错误消息。
-   *
+   * - 如果最后一条消息正在流式传输，则更新它为错误状态；
+   * - 否则添加一条新的错误消息。
    * @param sid 会话 ID
    * @param error 错误对象
    */
@@ -737,10 +668,8 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 处理 Agent 事件
-   *
-   * 将 Agent 事件转换为系统消息显示，用于展示 Agent 的状态更新或通知。
-   * 如果最后一条消息已经是 agent.event 类型，则更新它，否则添加新消息。
-   *
+   * - 将 Agent 事件转换为系统消息显示，用于展示 Agent 的状态更新或通知
+   * - 如果最后一条消息已经是 agent.event 类型，则更新它，否则添加新消息
    * @param evt 运行事件
    */
   function handleAgentEvent(evt: RunEvent) {
@@ -781,8 +710,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 更新指定消息
-   *
-   * 使用浅合并更新消息属性
+   * - 使用浅合并更新消息属性
    * @param sid 会话 ID
    * @param msgId 消息 ID
    * @param update 要更新的属性
@@ -797,8 +725,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 清除会话中的 Agent 事件消息
-   *
-   * 过滤掉 commandAction 为 'agent.event' 的消息
+   * - 过滤掉 commandAction 为 'agent.event' 的消息
    * @param sid 会话 ID
    */
   function clearAgentEventMessages(sid: Session['id']) {
@@ -809,7 +736,6 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 从队列中移除用户消息（仅本地）
-   *
    * @param sid 会话 ID
    * @param msgId 消息 ID
    * @returns 是否成功移除
@@ -835,9 +761,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 记录思考边界变化
-   *
-   * 在流式传输期间检测 <think> 标签的开始和结束边界，用于计算思考时长。
-   *
+   * - 在流式传输期间检测 <think> 标签的开始和结束边界，用于计算思考时长
    * @param msgId 消息 ID
    * @param prevContent 变更前的内容
    * @param nextContent 变更后的内容
@@ -858,8 +782,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 清理会话中所有运行中的工具消息
-   *
-   * 将所有状态为 'running' 的工具消息设置为指定状态
+   * - 将所有状态为 'running' 的工具消息设置为指定状态
    * @param sid 会话 ID
    * @param status 目标状态（'done' 或 'error'）
    */
@@ -1155,8 +1078,6 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 发送消息
-   *
-   * 消息发送的核心流程：
    * 1. 验证内容（非空或有附件）
    * 2. 预加载完成提示音
    * 3. 如果没有活跃会话，创建新会话
@@ -1262,7 +1183,7 @@ export const useChatStore = defineStore('chatStore', () => {
         activeRunMarker = undefined
       }
 
-      /**
+      /*
        * 每活跃运行的标志，用于在 run.completed 时检测静默吞没的错误。
        * hermes-agent 偶尔会在代理层捕获上游错误（如无效 API 密钥）时，
        * 发出带有空输出且无使用量的 run.completed。
@@ -1280,7 +1201,7 @@ export const useChatStore = defineStore('chatStore', () => {
 
       // 构建 Anthropic 格式的输入
       if (attachments?.length) {
-        // Todo: 构建 Anthropic 格式的输入
+        console.warn('Todo: 构建 Anthropic 格式的输入')
       } else {
         input = content.trim()
       }
@@ -1320,17 +1241,16 @@ export const useChatStore = defineStore('chatStore', () => {
 
       /**
        * 应用重连恢复数据
-       *
-       * 当 Socket.IO 重连后，服务器会发送恢复数据，包括消息列表、运行状态、队列等。
-       * 此函数负责将这些数据应用到本地状态。
-       *
+       * - 当 Socket.IO 重连后，服务器会发送恢复数据，包括消息列表、运行状态、队列等
+       * - 此函数负责将这些数据应用到本地状态
        * @param data 恢复会话的 payload
        */
       const applyReconnectResume = (data: ResumeSessionPayload) => {
-        console.log('applyReconnectResume')
         if (data.session_id !== sid) return
         const target = getSession(sid)
         if (!target) return
+
+        console.error('applyReconnectResume')
 
         // 更新服务器工作状态
         if (data.isWorking) {
@@ -1464,19 +1384,20 @@ export const useChatStore = defineStore('chatStore', () => {
                   setAbortState({ aborting: false, synced: (e as any).synced ?? false })
                   break
 
-                //  Todo: approval.requested
                 case 'approval.requested':
-                  console.warn('Todo: approval.requested')
+                  setPendingApproval({ ...e, session_id: sid })
                   break
 
-                // Todo: approval.resolved
                 case 'approval.resolved':
-                  console.warn('Todo: approval.resolved')
+                  clearPendingApproval({ ...e, session_id: sid })
                   break
 
-                // Todo: clarify.requested
                 case 'clarify.requested':
-                  console.warn('Todo: clarify.requested')
+                  setPendingClarify({ ...e, session_id: sid })
+                  break
+
+                case 'clarify.resolved':
+                  clearPendingClarify({ ...e, session_id: sid })
                   break
 
                 case 'run.failed':
@@ -1545,7 +1466,6 @@ export const useChatStore = defineStore('chatStore', () => {
               handleSessionCommandEvent(evt)
               break
 
-            // Todo: agent.event
             case 'agent.event':
               console.warn('Todo: agent.event')
               break
@@ -1973,7 +1893,8 @@ export const useChatStore = defineStore('chatStore', () => {
         streamStates.value.set(sid, ctrl)
       }
     } catch (err: any) {
-      console.error('ctrl:\n', err)
+      console.error('sendMessage:\n', err)
+
       // 发送失败处理
       if (shouldQueue && !runSubmitted) {
         dropQueuedUserMessage(sid, userMsg.id)
@@ -2050,7 +1971,6 @@ export const useChatStore = defineStore('chatStore', () => {
 
   /**
    * 获取消息的思考观察数据
-   *
    * @param msgId 消息 ID
    * @returns 思考观察数据
    */
@@ -2082,7 +2002,6 @@ export const useChatStore = defineStore('chatStore', () => {
    * - title: 更新会话标题
    * - usage: 更新 token 使用情况
    * - destroy: 销毁会话
-   *
    * @param evt 运行事件
    */
   function handleSessionCommandEvent(evt: RunEvent) {
