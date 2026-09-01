@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import ChatPanel from '@/components/hermes/chat/ChatPanel.vue'
+import ChatPanel from '@/components/hermes/chat/ChatPanel/index.vue'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { CHAT_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
