@@ -9,6 +9,7 @@ import { CheckboxOutline, AddOutline, GridOutline, MenuOutline, CopyOutline } fr
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
+import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import MessageList from '../MessageList.vue'
 import SessionListItem from '../SessionListItem.vue'
 import ChatInput from '../ChatInput/index.vue'
@@ -21,8 +22,8 @@ const profileOptions: SelectOption[] = [
     value: ''
   },
   {
-    label: 'default',
-    value: 'default'
+    label: DEFAULT_PROFILE_NAME,
+    value: DEFAULT_PROFILE_NAME
   }
 ]
 

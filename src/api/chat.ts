@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client'
 import type { HermesMessage } from '@/api/sessions.ts'
 import { ACTIVE_PROFILE_NAME_KEY } from '@/constants/storage-keys.ts'
+import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { getApiKey, getBaseUrlValue } from '@/api/client.ts'
 
 
@@ -231,8 +232,6 @@ export interface StartRunRequest {
   reasoning_effort?: string
 }
 
-
-const DEFAULT_PROFILE_NAME = 'default'
 
 // ============================
 // Socket.IO 聊天运行连接管理

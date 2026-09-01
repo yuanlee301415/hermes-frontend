@@ -28,11 +28,11 @@ import { useAppStore } from '@/store/modules/app.ts'
 import { uuid } from '@/utils/uuid.ts'
 import { detectThinkingBoundary } from '@/utils/thinking-parser.ts'
 import { ACTIVE_SESSION_KEY_PREFIX, REASONING_LS_PREFIX } from '@/constants/storage-keys.ts'
+import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { hasRuntimeToolPayload, runtimeToolPayloadOrUndefined, mapHermesMessages, readRunMarker, getReplayRunMarker, resolveResumedAssistantState,
   errorMessageText, runtimeToolOutputHasError, normalizeQueuedUserMessages } from '../shared/chat.ts'
 import { getItemBestEffort, removeItem, setItemBestEffort, getStoredReasoningEffort } from '../shared/storage.ts'
 
-const DEFAULT_PROFILE_NAME = 'default'
 
 export const useChatStore = defineStore('chatStore', () => {
   const profileStore = useProfilesStore()

@@ -2,6 +2,7 @@
 * 会话 Model
 * */
 import { type SessionSummary } from '@/api/sessions.ts'
+import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { Message } from './Message.ts'
 
 // 会话来源
@@ -64,7 +65,7 @@ export class Session {
   updatedAt: number
 
   // 所属 Profile
-  profile?: string = 'default'
+  profile?: string = DEFAULT_PROFILE_NAME
 
   // 会话标题（自动生成或用户设置）
   title: string
@@ -208,7 +209,7 @@ export class Session {
       return new this({
         id: _.id,
         title: _.title,
-        profile: _.profile ??　'default',
+        profile: _.profile ??　DEFAULT_PROFILE_NAME,
         source: _.source as SessionSource,
         agent: _.agent as SessionAgent,
         agentSessionId: _.agent_native_session_id,
