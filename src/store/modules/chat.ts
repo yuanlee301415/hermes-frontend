@@ -525,15 +525,15 @@ export const useChatStore = defineStore('chatStore', () => {
    * @param options 会话创建选项
    * @returns 新创建的会话对象
    */
-  function createSession(options: Session = {} as Session): Session {
+  function createSession(options: Partial<Session> = {}): Session {
     const source = options.source ?? Session.SOURCE.Cli
-    const codingAgentId = options.codingAgentId ?? (options.agent === Session.AGENT.Codex ? Session.AGENT.Codex : options.agent === Session.AGENT.Claude ? Session.CODING_AGENT_ID.ClaudeCode : undefined)
-    const agent = options.agent ?? (source === Session.SOURCE.CodingAgent ? (codingAgentId === Session.CODING_AGENT_ID.Codex ? Session.AGENT.Codex : Session.AGENT.Claude) : Session.AGENT.Hermes)
+    const codingAgentId = options.codingAgentId ?? (options.agent === Session.AGENT_TYPE.Codex ? Session.AGENT_TYPE.Codex : options.agent === Session.AGENT_TYPE.Claude ? Session.CODING_AGENT_ID.ClaudeCode : undefined)
+    const agent = options.agent ?? (source === Session.SOURCE.CodingAgent ? (codingAgentId === Session.CODING_AGENT_ID.Codex ? Session.AGENT_TYPE.Codex : Session.AGENT_TYPE.Claude) : Session.AGENT_TYPE.Hermes)
     const codingAgentMode = source === Session.SOURCE.CodingAgent ? options.codingAgentMode || Session.CODING_AGENT_MODE.Scoped : undefined
     const session = new Session({
       id: uuid(),
       profile: options.profile ?? profileStore.activeProfileName,
-      title: '',
+      title: '新对话',
       source,
       agent,
       codingAgentId,
@@ -548,8 +548,34 @@ export const useChatStore = defineStore('chatStore', () => {
       apiKey: options.apiKey,
       apiMode: options.apiMode
     })
+    // console.log('createSession>session:')
+    // console.table(session)
     sessions.value.unshift(session)
-    console.log('createSession:', { options, session })
+    return session
+  }
+
+  /**
+   * 创建新的聊天会话并切换到该会话
+   * @param options 会话创建选项
+   * @returns 新创建的会话
+   */
+  function newChat(options: Partial<Session>) {
+    const source = options.source || Session.SOURCE.Cli
+    const isGlobalCodingAgent = source === Session.SOURCE.CodingAgent && options.codingAgentMode === Session.CODING_AGENT_MODE.Global
+    const session = createSession({
+      profile: options.profile,
+      model: isGlobalCodingAgent ? undefined : options.model || appStore.selectedModel || undefined,
+      provider: isGlobalCodingAgent ? '' : options.provider || appStore.selectedProvider || '',
+      source,
+      agent: options.agent,
+      codingAgentId: options.codingAgentId,
+      codingAgentMode: options.codingAgentMode,
+      workspace: options.workspace,
+      baseUrl: options.baseUrl,
+      apiKey: options.apiKey,
+      apiMode: options.apiMode
+    })
+    void switchSession(session.id)
     return session
   }
 
@@ -1467,7 +1493,7 @@ export const useChatStore = defineStore('chatStore', () => {
               break
 
             case 'agent.event':
-              console.warn('Todo: agent.event')
+              handleAgentEvent(evt)
               break
 
             case 'compression.started':
@@ -2890,6 +2916,7 @@ export const useChatStore = defineStore('chatStore', () => {
     respondApproval,
     removeQueuedMessage,
     refreshSessionListOnly,
-    reloadActivatedSession
+    reloadActivatedSession,
+    newChat
   }
 })

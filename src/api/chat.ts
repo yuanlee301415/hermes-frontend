@@ -206,7 +206,7 @@ export interface StartRunRequest {
   /** 请求来源：API服务器、命令行或编码代理 */
   source?: 'api_server' | 'cli' | 'coding_agent'
   /** 编码代理 ID */
-  coding_agent_id?: 'claude-code' | 'codex'
+  coding_agent_id?: 'claude-code' | 'codex' | 'hermes' | 'claude'
   /** 代理 ID */
   agent_id?: 'claude-code' | 'codex'
   /** 运行模式：作用域模式或全局模式 */
@@ -923,8 +923,10 @@ function globalPeerUserMessageHandler(event: RunEvent) {
   }
 }
 
-function globalAgentEventHandler() {
-  console.error('Todo:globalAgentEventHandler')
+function globalAgentEventHandler(event: RunEvent) {
+  const sid = event.session_id
+  if (!sid) return
+  sessionEventHandlers.get(sid)?.onAgentEvent?.(event)
 }
 
 function globalSubagentEventHandler() {

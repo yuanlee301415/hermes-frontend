@@ -27,7 +27,7 @@ function handleClick(event: MouseEvent) {
     @click="handleClick"
   >
     <div class="session-item-content flex-1">
-      <n-text strong class="session-title">
+      <n-text v-if="session.title" strong class="session-title">
         <n-ellipsis>{{ session.title }}</n-ellipsis>
       </n-text>
 

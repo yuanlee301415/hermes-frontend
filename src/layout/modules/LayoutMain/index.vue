@@ -7,9 +7,9 @@ defineOptions({ name: 'LayoutMain' })
 
 <template>
   <main>
-    <RouterView v-slot="{ Component, route }">
+    <RouterView v-slot="{ Component }">
       <transition name="fade-slide" mode="out-in">
-        <component :is="Component" :key="route.name" />
+        <component :is="Component" />
       </transition>
     </RouterView>
   </main>

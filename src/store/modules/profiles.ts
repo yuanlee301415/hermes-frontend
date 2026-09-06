@@ -46,5 +46,6 @@ export const useProfilesStore = defineStore('profilesStore', () => {
     profiles,
     activeProfile,
     activeProfileName,
+    loading
   }
 })

@@ -13,7 +13,7 @@ const SOURCE = {
 } as const
 
 // Agent 类型
-const AGENT = {
+const AGENT_TYPE = {
   Hermes: 'hermes',
   Claude: 'claude',
   Codex: 'codex'
@@ -31,12 +31,6 @@ const CODING_AGENT_MODE = {
   Scoped: 'scoped'
 } as const
 
-// 模型提供商
-const PROVIDER = {
-  Global: 'global',
-  Scoped: 'scoped'
-} as const
-
 // API 模式
 const API_MODE = {
   ChatCompletions: 'chat_completions',
@@ -45,9 +39,8 @@ const API_MODE = {
 } as const
 
 export type SessionSource = typeof SOURCE[keyof typeof SOURCE]
-export type SessionAgent = typeof AGENT[keyof typeof AGENT]
+export type SessionAgentType = typeof AGENT_TYPE[keyof typeof AGENT_TYPE]
 export type SessionCodingAgentId = typeof CODING_AGENT_ID[keyof typeof CODING_AGENT_ID]
-export type SessionProvider = typeof PROVIDER[keyof typeof PROVIDER]
 export type SessionApiMode = typeof API_MODE[keyof typeof API_MODE]
 export type SessionCodingAgentMode = typeof CODING_AGENT_MODE[keyof typeof CODING_AGENT_MODE]
 
@@ -73,8 +66,8 @@ export class Session {
   // 会话来源
   source?: SessionSource
 
-  // 使用的 Agent 类型
-  agent?: SessionAgent
+  // Agent 类型
+  agent?: SessionAgentType | SessionCodingAgentId
 
   // Agent 层会话 ID
   agentSessionId?: string
@@ -83,7 +76,7 @@ export class Session {
   agentNativeSessionId?: string
 
   // 编码 Agent ID
-  codingAgentId?: SessionCodingAgentId
+  codingAgentId?: SessionAgentType | SessionCodingAgentId
 
   // 编码 Agent 模式
   codingAgentMode?: SessionCodingAgentMode
@@ -92,7 +85,7 @@ export class Session {
   model?: string
 
   // 模型提供商
-  provider?: SessionProvider
+  provider?: string
 
   // 自定义 API 基础 URL
   baseUrl?: string
@@ -181,10 +174,9 @@ export class Session {
   }
 
   static SOURCE = SOURCE
-  static AGENT = AGENT
+  static AGENT_TYPE = AGENT_TYPE
   static CODING_AGENT_ID = CODING_AGENT_ID
   static CODING_AGENT_MODE = CODING_AGENT_MODE
-  static PROVIDER = PROVIDER
   static API_MODE = API_MODE
 
   /**
@@ -203,7 +195,7 @@ export class Session {
       const codingAgentMode = _.source === SOURCE.CodingAgent
         ? (_.agent_mode === CODING_AGENT_MODE.Global || _.agent_mode === CODING_AGENT_MODE.Scoped
           ? _.agent_mode
-          : _.provider === PROVIDER.Global ? PROVIDER.Global : PROVIDER.Scoped)
+          : _.provider === CODING_AGENT_MODE.Global ? CODING_AGENT_MODE.Global : CODING_AGENT_MODE.Scoped)
         : undefined
 
       return new this({
@@ -211,7 +203,7 @@ export class Session {
         title: _.title,
         profile: _.profile ??　DEFAULT_PROFILE_NAME,
         source: _.source as SessionSource,
-        agent: _.agent as SessionAgent,
+        agent: _.agent as SessionAgentType,
         agentSessionId: _.agent_native_session_id,
         agentNativeSessionId: _.agent_native_session_id,
         codingAgentMode,
@@ -219,7 +211,7 @@ export class Session {
         createdAt: Math.round(_.started_at * 1000),
         updatedAt: Math.round(((_.last_active || _.ended_at || _.started_at) ?? NaN) * 1000),
         model: _.model,
-        provider: (_.provider || _.billing_provider) as SessionProvider,
+        provider: (_.provider || _.billing_provider),
         messageCount: _.message_count,
         messageTotal: _.message_count,
         loadedMessageCount: 0,

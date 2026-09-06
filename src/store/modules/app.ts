@@ -113,6 +113,18 @@ export const useAppStore = defineStore('appStore', () => {
     ])
   }
 
+  function getModelAlias(modelId: string, provider?: string): string {
+    if (provider) return modelAliases.value[provider]?.[modelId] ?? ''
+    for (const aliases of Object.values(modelAliases.value)) {
+      if (aliases[modelId]) return aliases[modelId]
+    }
+    return ''
+  }
+
+  function displayModelName(modelId: string, provider?: string): string {
+    return getModelAlias(modelId, provider) || modelId
+  }
+
   return {
     sidebarCollapsed,
     modelGroups,
@@ -122,6 +134,8 @@ export const useAppStore = defineStore('appStore', () => {
     selectedModel,
     selectedProvider,
     toggleSidebarCollapsed,
-    waitForModelsForRun
+    waitForModelsForRun,
+    displayModelName,
+    loadModels
   }
 })

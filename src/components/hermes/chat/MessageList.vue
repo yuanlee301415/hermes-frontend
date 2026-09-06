@@ -55,13 +55,13 @@ const displayMessages = computed(() => {
 // 空状态配置：根据当前会话的 AI 代理类型返回对应的 logo 和提示文本
 const emptyState = computed(() => {
   const sess = chatStore.activeSession
-  if (sess?.codingAgentId === Session.CODING_AGENT_ID.Codex || sess?.agent === Session.AGENT.Codex) {
+  if (sess?.codingAgentId === Session.CODING_AGENT_ID.Codex || sess?.agent === Session.AGENT_TYPE.Codex) {
     return {
       logo: '/coding-agents/codex-openai.png',
       alt: 'Codex'
     }
   }
-  if (sess?.codingAgentId === Session.CODING_AGENT_ID.ClaudeCode || sess?.agent === Session.AGENT.Claude) {
+  if (sess?.codingAgentId === Session.CODING_AGENT_ID.ClaudeCode || sess?.agent === Session.AGENT_TYPE.Claude) {
     return {
       logo: '/coding-agents/claude-code.svg',
       alt: 'Claude'

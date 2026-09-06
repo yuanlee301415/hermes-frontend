@@ -3,12 +3,14 @@ import { useRoute, useRouter } from 'vue-router'
 import ChatPanel from '@/components/hermes/chat/ChatPanel/index.vue'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
+import { useAppStore } from '@/store/modules/app.ts'
 import { CHAT_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 
 const route = useRoute()
 const router = useRouter()
 const chatStore = useChatStore()
 const profileStore = useProfilesStore()
+const appStore = useAppStore()
 
 const routeSessionId = computed(() => {
   const value = route.params.sessionId
@@ -18,6 +20,7 @@ const routeSessionId = computed(() => {
 let refreshTimer: ReturnType<typeof setTimeout> | undefined
 
 watch(routeSessionId, async (sessionId) => {
+  // console.warn('ChatView>routeSessionId:', sessionId)
   if (!chatStore.sessionsLoaded) return
 
   if (!sessionId) {
@@ -38,6 +41,7 @@ watch(routeSessionId, async (sessionId) => {
 
 onMounted(async () => {
   await Promise.all([
+    appStore.loadModels(),
     profileStore.fetchProfiles(),
   ])
   await loadRouteSession()

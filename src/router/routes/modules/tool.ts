@@ -4,6 +4,8 @@ import { LAYOUT } from '@/router/constant'
 
 const TOOL_ROUTE_NAME = 'Tool'
 
+export const TOOL_CODING_AGENTS_ROUTE_NAME = TOOL_ROUTE_NAME + '.CodingAgents'
+
 const TOOL_ROUTE: AppRouteRecordRaw = {
   path: '/tool',
   name: TOOL_ROUTE_NAME,
@@ -16,7 +18,7 @@ const TOOL_ROUTE: AppRouteRecordRaw = {
   children: [
     {
       path: 'coding-agents',
-      name: TOOL_ROUTE_NAME + '.CodingAgents',
+      name: TOOL_CODING_AGENTS_ROUTE_NAME,
       component: () => import('@/views/tool/CodingAgentsView.vue'),
       meta: {
         title: '编程工具',
