@@ -14,6 +14,7 @@ import mk from '@vscode/markdown-it-katex'
 import katex from 'katex'
 import { isLatexFence, renderLatexFence } from '@/components/hermes/shared/render-latex.ts'
 import { isMermaidFence, renderMermaidPlaceholder } from '@/components/hermes/shared/mermaidRenderer.ts'
+import { MARKDOWN_HEADING_ID_PREFIX } from '@/constants/hardcoded.ts'
 import { renderHighlightedCodeBlock, handleCodeBlockCopyClick } from '../../shared/highlight.ts'
 
 // 支持的视频文件扩展名
@@ -121,7 +122,7 @@ const renderedHtml = computed(() => {
 
   // 匹配 h1-h6 标签（可能带属性）
   html = html.replace(/<(h[1-6])([^>]*)>/g, (match, tag, attrs) => {
-    const id = `${prefix}heading-${++headingCounter}`
+    const id = `${prefix}${MARKDOWN_HEADING_ID_PREFIX}-${++headingCounter}`
 
     // 如果已存在 id 属性，替换为新的
     if (attrs.includes('id=')) {

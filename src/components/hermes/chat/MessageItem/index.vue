@@ -10,19 +10,23 @@
 - 附件（暂缓）
 - 语音播放（暂缓）
 -->
-<script setup lang="ts">
-import { CopyOutline, BuildOutline } from '@vicons/ionicons5'
-import { ChevronRight, ChevronDown } from '@vicons/tabler'
+<script lang="ts">
 import { Message } from '@/models/Message.ts'
-import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
 import { parseThinking, countThinkingChars } from '@/utils/thinking-parser.ts'
-import { useChatStore } from '@/store/modules/chat.ts'
 import { formatDurationMs, formatTime } from '@/utils/format.ts'
 import { copyToClipboard } from '@/utils/clipboard.ts'
-import MarkdownRender from '../MarkdownRender/index.vue'
+import { MESSAGE_ID_PREFIX } from '@/constants/hardcoded.ts'
 import { parseContentBlocks, getBlockText } from '../../shared/parse-message.ts'
 import { formatToolPayload, renderToolPayload } from '../../shared/parse-tool.ts'
 import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../../shared/highlight.ts'
+</script>
+
+<script setup lang="ts">
+import { CopyOutline, BuildOutline } from '@vicons/ionicons5'
+import { ChevronRight, ChevronDown } from '@vicons/tabler'
+import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
+import { useChatStore } from '@/store/modules/chat.ts'
+import MarkdownRender from '../MarkdownRender/index.vue'
 
 defineOptions({ name: 'MessageItem' })
 
@@ -141,7 +145,7 @@ const renderedToolResult = computed(() => formattedToolResult.value ? renderTool
 
 // 有效标题 ID 前缀：优先使用传入的 headingIdPrefix，否则使用消息 ID 作为前缀
 // 用于 Markdown 渲染时为标题生成唯一 ID，支持锚点跳转
-const effectiveHeadingIdPrefix = computed(() => props.headingIdPrefix ?? `msg-${props.message.id}`)
+const effectiveHeadingIdPrefix = computed(() => props.headingIdPrefix ?? `${MESSAGE_ID_PREFIX}-${props.message.id}`)
 
 
 // ==================== 消息类型判断计算属性 ====================
@@ -232,7 +236,7 @@ async function handleCopyMessage() {
 </script>
 
 <template>
-  <div class="message" :class="[message.role, {highlight}]" :id="`message-${message.id}`">
+  <div class="message" :class="[message.role, {highlight}]" :id="`${MESSAGE_ID_PREFIX}-${message.id}`">
 
     <!-- ================================ >>>[工具调用] ================================ -->
     <div v-if="message.role === Message.ROLE.Tool" class="msg-tool">
