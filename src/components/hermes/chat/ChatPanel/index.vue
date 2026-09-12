@@ -24,6 +24,7 @@ import MessageList from '../MessageList.vue'
 import SessionListItem from '../SessionListItem.vue'
 import ChatInput from '../ChatInput/index.vue'
 import NewChatForm from './modules/NewChatForm/index.vue'
+import OutlinePanel from './modules/OutlinePanel/index.vue'
 
 defineOptions({ name: 'ChatPanel' })
 
@@ -44,6 +45,7 @@ const profileStore = useProfilesStore()
 const appStore = useAppStore()
 const profileFilterValue = ref('')
 const showSessions = ref(true)
+const outlineVisible = ref(false)
 
 /*
 * ==================== 新建对话 ====================
@@ -167,6 +169,14 @@ async function handleConfirmNewChat() {
 function sortSessionsWithActiveFirst(items: Session[]): Session[] {
   return [...items].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
 }
+
+/**
+ * 导航到 Markdown 中的标题
+ * @param targetId DOM `id`
+ */
+function handleNavigate(targetId: string) {
+  document.querySelector('#' + targetId)?.scrollIntoView(true)
+}
 </script>
 
 <template>
@@ -227,7 +237,7 @@ function sortSessionsWithActiveFirst(items: Session[]): Session[] {
         </n-flex>
 
         <n-flex class="header-actions" align="center" :size="8">
-          <n-button quaternary circle size="small" title="会话大纲">
+          <n-button quaternary circle size="small" title="会话大纲" @click="outlineVisible = !outlineVisible">
             <template #icon>
               <MenuOutline/>
             </template>
@@ -253,6 +263,9 @@ function sortSessionsWithActiveFirst(items: Session[]): Session[] {
       <div class="chat-content-wrapper">
         <div class="chat-main-content">
           <MessageList ref="messageListRef" />
+        </div>
+        <div class="chat-outline" v-if="outlineVisible">
+          <OutlinePanel @navigate="handleNavigate"/>
         </div>
       </div>
       <!--============ [Chat content]<<< ============-->
