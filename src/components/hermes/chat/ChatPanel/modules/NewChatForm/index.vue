@@ -277,11 +277,8 @@ function handelProviderChange(val: string) {
 
       <dl>
         <dt>工作区</dt>
-        <dd class="workspace">
-          <n-input v-model:value="formModel.workspace"/>
-          <div class="folder">
-            <FolderPicker v-model:path="formModel.workspace" />
-          </div>
+        <dd>
+          <FolderPicker v-model:path="formModel.workspace" />
         </dd>
       </dl>
 
@@ -303,17 +300,6 @@ function handelProviderChange(val: string) {
       dt {
         color: var(--text-muted);
         font-weight: 500;
-      }
-      .workspace {
-        border: 1px solid #ffffff1a;
-        border-radius: 6px;
-        padding: 8px;
-        background-color: #00000033;
-        .folder {
-          margin-top: 10px;
-          max-height: 360px;
-          overflow-y: auto;
-        }
       }
     }
   }

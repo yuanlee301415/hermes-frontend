@@ -53,27 +53,46 @@ async function handleLoadFolders(node: TreeOption) {
   node.folders = tree.folders
 }
 
-function handleUpdateValue(value: string[]) {
-  path.value = value[0]
+function handleUpdateKeys(keys: string[]) {
+  path.value = keys[0]
 }
 
 </script>
 
 <template>
 <div class="folder-picker">
-  <n-tree
-    :data="tree"
-    :selected-keys="selectedKeys"
-    :on-load="handleLoadFolders"
-    key-field="fullPath"
-    label-field="name"
-    children-field="folders"
-    block-line
-    show-line
-    :default-expanded-keys="expandedKeys"
-    @update:selectedKeys="handleUpdateValue"
-  />
+  <n-input v-model:value="path" clearable />
+  <div class="folder-tree">
+    <n-tree
+      :data="tree"
+      :selected-keys="selectedKeys"
+      :on-load="handleLoadFolders"
+      key-field="fullPath"
+      label-field="name"
+      children-field="folders"
+      block-line
+      show-line
+      :default-expanded-keys="expandedKeys"
+      @update:selectedKeys="handleUpdateKeys"
+    />
+  </div>
 </div>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+.folder-picker {
+  border: 1px solid #ffffff1a;
+  border-radius: 6px;
+  padding: 8px;
+  background-color: #00000033;
+  max-height: 360px;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  .folder-tree {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+}
+</style>
