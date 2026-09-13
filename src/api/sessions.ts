@@ -4,6 +4,7 @@
 * - 会话上下文长度
 * */
 import { request } from './client.ts'
+import type { Session } from '@/models/Session.ts'
 
 export interface SessionSummary {
   id: string
@@ -71,4 +72,21 @@ export async function getContextLengthApi(profile?: string, provider?: string, m
   const query = params.toString()
   const res = await request<{ context_length: number }>(`api/hermes/sessions/context-length${query ? `?${query}` : ''}`)
   return res.context_length
+}
+
+/**
+ * 重命名会话
+ * @param sid 会话 ID
+ * @param title 会话标题
+ */
+export async function renameSession(sid: Session['id'], title: string) {
+  try {
+    await request(`api/hermes/sessions/${sid}/rename`, {
+      method: 'post',
+      body: JSON.stringify({ title })
+    })
+    return true
+  } catch {
+    return false
+  }
 }

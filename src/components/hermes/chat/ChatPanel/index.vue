@@ -13,6 +13,7 @@ import { NewChatModel } from './modules/NewChatForm/index.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
 import { CONTEXTMENU_KEYS, generateContextmenuOptions, sortSessionsWithActiveFirst } from './index.ts'
+import { renameSession } from '@/api/sessions.ts'
 </script>
 
 <script setup lang="ts">
@@ -29,18 +30,6 @@ import NewChatForm from './modules/NewChatForm/index.vue'
 import OutlinePanel from './modules/OutlinePanel/index.vue'
 
 defineOptions({ name: 'ChatPanel' })
-
-// 会话列表右键菜单
-type CONTEXTMENU = {
-  // 右击的会话ID
-  sid: Session['id'],
-  // 是否显示
-  visible: boolean,
-  // `clientX`
-  x: number,
-  // `clientY`
-  y: number
-}
 
 const profileOptions: SelectOption[] = [
   {
@@ -84,17 +73,35 @@ const canConfirmNewChat = computed(() => {
 
 
 /*
-* ==================== 右键菜单 ====================
+* ==================== 会话列表右键 ====================
 * */
 
-const contextmenu = reactive<CONTEXTMENU>({sid: '', visible: false, x: 0, y: 0})
+// 右键数据
+const contextmenu = reactive({
+  // 会话 ID
+  sid: '',
+  // 右键菜单是否可见
+  visible: false,
+  x: 0,
+  y: 0
+})
+// 右击的会话
 const contextSession = computed(() => chatStore.sessions.find(_ => _.id === contextmenu.sid) ?? null)
+// 右键菜单
 const contextmenuOptions = computed(() => generateContextmenuOptions(!sessionPrefsStore.isPinned(contextmenu.sid), contextSession.value?.source === Session.SOURCE.Cli))
 // 已置顶的会话列表（按更新时间排序）
 const pinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => sessionPrefsStore.isPinned(sess.id))))
 // 未置顶的会话列表（按更新时间排序）
 const unpinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => !sessionPrefsStore.isPinned(sess.id))))
-
+// 重命名
+const ctxMenuRename = reactive({
+  // “重命名”弹窗是否可见
+  visible: false,
+  // 新标题
+  value: '',
+  // 重命名会话 ID
+  sid: ''
+})
 
 /*
 * ==================== 会话列表 ====================
@@ -211,7 +218,7 @@ function handleNavigate(targetId: string) {
 }
 
 /*
-* ==================== 右键菜单 ====================
+* ==================== 会话列表右键 ====================
 * */
 
 /**
@@ -247,9 +254,32 @@ function handleContextMenuSelect(key: string) {
     case CONTEXTMENU_KEYS.UnPin:
       sessionPrefsStore.togglePinned(contextmenu.sid)
       break
+    // 重命名
+    case CONTEXTMENU_KEYS.Rename: {
+      const session = chatStore.sessions.find(_ => _.id === contextmenu.sid)
+      ctxMenuRename.sid = contextmenu.sid
+      ctxMenuRename.value = session?.title ?? ''
+      ctxMenuRename.visible = true
+      break
+    }
   }
 }
 
+// 重命名
+async function confirmRename() {
+  if (!ctxMenuRename.sid || !ctxMenuRename.value.trim()) return false
+  const ok = await renameSession(ctxMenuRename.sid, ctxMenuRename.value)
+  if (ok) {
+    const session = chatStore.sessions.find(_ => _.id === ctxMenuRename.sid)
+    if (session) {
+      session.title = ctxMenuRename.value
+    }
+    window.$message?.success('已重命名')
+  } else {
+    window.$message?.error('重命名失败')
+  }
+  ctxMenuRename.visible = false
+}
 </script>
 
 <template>
@@ -397,6 +427,20 @@ function handleContextMenuSelect(key: string) {
       @select="handleContextMenuSelect"
     />
     <!--================ [右键菜单]<<< ================-->
+
+    <!--================ >>>[重命名弹窗] ================-->
+    <n-modal
+      v-model:show="ctxMenuRename.visible"
+      title="重命名会话"
+      preset="dialog"
+      auto-focus
+      positive-text="确认"
+      negative-text="取消"
+      @positive-click="confirmRename"
+    >
+      <n-input v-model:value="ctxMenuRename.value"/>
+    </n-modal>
+    <!--================ [重命名弹窗]<<< ================-->
   </div>
 </template>
 
