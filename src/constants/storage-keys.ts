@@ -14,3 +14,6 @@ export const SIDEBAR_COLLAPSED_KEY = 'hermes_sidebar_collapsed'
 
 // 推理强度
 export const REASONING_LS_PREFIX = 'hermes:reasoning_effort:'
+
+// 会话置顶
+export const PIN_KEY_PREFIX = 'hermes_session_pins_v1_'

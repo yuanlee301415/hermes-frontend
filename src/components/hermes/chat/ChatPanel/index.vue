@@ -12,6 +12,7 @@ import { Session } from '@/models/Session.ts'
 import { NewChatModel } from './modules/NewChatForm/index.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
+import { CONTEXTMENU_KEYS, generateContextmenuOptions, sortSessionsWithActiveFirst } from './index.ts'
 </script>
 
 <script setup lang="ts">
@@ -20,6 +21,7 @@ import { useRouter } from 'vue-router'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { useAppStore } from '@/store/modules/app.ts'
+import { useSessionPrefsStore } from '@/store/modules/session-prefs.ts'
 import MessageList from '../MessageList.vue'
 import SessionListItem from '../SessionListItem.vue'
 import ChatInput from '../ChatInput/index.vue'
@@ -27,6 +29,18 @@ import NewChatForm from './modules/NewChatForm/index.vue'
 import OutlinePanel from './modules/OutlinePanel/index.vue'
 
 defineOptions({ name: 'ChatPanel' })
+
+// 会话列表右键菜单
+type CONTEXTMENU = {
+  // 右击的会话ID
+  sid: Session['id'],
+  // 是否显示
+  visible: boolean,
+  // `clientX`
+  x: number,
+  // `clientY`
+  y: number
+}
 
 const profileOptions: SelectOption[] = [
   {
@@ -43,6 +57,7 @@ const router = useRouter()
 const chatStore = useChatStore()
 const profileStore = useProfilesStore()
 const appStore = useAppStore()
+const sessionPrefsStore = useSessionPrefsStore()
 const profileFilterValue = ref('')
 const showSessions = ref(true)
 const outlineVisible = ref(false)
@@ -67,6 +82,28 @@ const canConfirmNewChat = computed(() => {
   return true
 })
 
+
+/*
+* ==================== 右键菜单 ====================
+* */
+
+const contextmenu = reactive<CONTEXTMENU>({sid: '', visible: false, x: 0, y: 0})
+const contextSession = computed(() => chatStore.sessions.find(_ => _.id === contextmenu.sid) ?? null)
+const contextmenuOptions = computed(() => generateContextmenuOptions(!sessionPrefsStore.isPinned(contextmenu.sid), contextSession.value?.source === Session.SOURCE.Cli))
+// 已置顶的会话列表（按更新时间排序）
+const pinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => sessionPrefsStore.isPinned(sess.id))))
+// 未置顶的会话列表（按更新时间排序）
+const unpinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => !sessionPrefsStore.isPinned(sess.id))))
+
+
+/*
+* ==================== 会话列表 ====================
+* */
+
+/**
+ * 单击会话列表项跳转到会话页面
+ * @param sessionId
+ */
 async function handleSessionClick(sessionId: string) {
   await router.push({
     name: SESSION_ROUTE_NAME,
@@ -161,14 +198,9 @@ async function handleConfirmNewChat() {
   newChatVisible.value = false
 }
 
-/**
- * 将会话按更新时间降序排序（最新的在前）
- * @param items 会话数组
- * @returns 排序后的会话数组
- */
-function sortSessionsWithActiveFirst(items: Session[]): Session[] {
-  return [...items].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-}
+/*
+* ==================== 会话大纲 ====================
+* */
 
 /**
  * 导航到 Markdown 中的标题
@@ -177,6 +209,47 @@ function sortSessionsWithActiveFirst(items: Session[]): Session[] {
 function handleNavigate(targetId: string) {
   document.querySelector('#' + targetId)?.scrollIntoView(true)
 }
+
+/*
+* ==================== 右键菜单 ====================
+* */
+
+/**
+ * 右击
+ * @param evt 鼠标右击事件
+ * @param sid 会话ID
+ */
+function onContextmenu(evt: MouseEvent, sid: Session['id']) {
+  evt.preventDefault()
+  contextmenu.sid = sid
+  contextmenu.x = evt.clientX
+  contextmenu.y = evt.clientY
+  contextmenu.visible = true
+}
+
+function handleClickOutside() {
+  contextmenu.visible = false
+}
+
+/**
+ * 选择菜单项
+ * @param key
+ */
+function handleContextMenuSelect(key: string) {
+  console.warn('handleContextMenuSelect>key:', key)
+  contextmenu.visible = false
+  if (!contextmenu.sid) return
+
+  switch (key) {
+    // 置顶
+    case CONTEXTMENU_KEYS.Pin:
+    // 取消置顶
+    case CONTEXTMENU_KEYS.UnPin:
+      sessionPrefsStore.togglePinned(contextmenu.sid)
+      break
+  }
+}
+
 </script>
 
 <template>
@@ -211,12 +284,29 @@ function handleNavigate(targetId: string) {
       </div>
 
       <div v-if="showSessions" class="session-items flex-1">
+        <template v-if="pinnedSessions.length">
+          <div class="session-group-header session-group-header--static">
+            <span class="session-group-label">已置顶</span>
+            <span class="session-group-count">({{ pinnedSessions.length }})</span>
+          </div>
+          <SessionListItem
+            v-for="session of pinnedSessions"
+            :key="`pinned-${session.id}`"
+            :session="session"
+            :active="session.id === chatStore.activeSessionId"
+            :pinned="true"
+            @select="handleSessionClick(session.id)"
+            @contextmenu="onContextmenu($event, session.id)"
+          />
+        </template>
         <SessionListItem
-          v-for="session of sortSessionsWithActiveFirst(chatStore.sessions)"
+          v-for="session of unpinnedSessions"
           :key="session.id"
           :session="session"
           :active="session.id === chatStore.activeSessionId"
+          :pinned="false"
           @select="handleSessionClick(session.id)"
+          @contextmenu="onContextmenu($event, session.id)"
         />
       </div>
     </aside>
@@ -295,6 +385,18 @@ function handleNavigate(targetId: string) {
     </n-drawer>
     <!--================ [新建对话》抽屉]<<< ================-->
 
+    <!--================ >>>[右键菜单] ================-->
+    <n-dropdown
+      placement="bottom-start"
+      trigger="manual"
+      :x="contextmenu.x"
+      :y="contextmenu.y"
+      :options="contextmenuOptions"
+      :show="contextmenu.visible"
+      :on-clickoutside="handleClickOutside"
+      @select="handleContextMenuSelect"
+    />
+    <!--================ [右键菜单]<<< ================-->
   </div>
 </template>
 

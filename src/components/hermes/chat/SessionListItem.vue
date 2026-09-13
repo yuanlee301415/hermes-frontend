@@ -1,16 +1,29 @@
 <!--
+会话标题列表
+Todo:
+- [ ] 其它组件属性
 -->
 <script setup lang="ts">
 import type { Session } from '@/models/Session.ts'
+import { Pinned } from '@vicons/tabler'
 
 const props = defineProps<{
   session: Session
   active: boolean
+  pinned: boolean
   to?: string
+/*Todo:
+  canDelete: boolean
+  streaming?: boolean
+  selectable?: boolean
+  selected?: boolean
+  showProfile?: boolean
+*/
 }>()
 
 const emit = defineEmits<{
   (e: 'select'): void
+  (e: 'contextmenu', evt: MouseEvent): void
 }>()
 
 function handleClick(event: MouseEvent) {
@@ -25,11 +38,15 @@ function handleClick(event: MouseEvent) {
     :class="{active}"
     class="session-item flex-row"
     @click="handleClick"
+    @contextmenu="emit('contextmenu', $event)"
   >
     <div class="session-item-content flex-1">
-      <n-text v-if="session.title" strong class="session-title">
-        <n-ellipsis>{{ session.title }}</n-ellipsis>
-      </n-text>
+      <n-flex align="center" :size="4">
+        <n-icon v-if="pinned"><Pinned/></n-icon>
+        <n-text v-if="session.title" strong class="session-title">
+          <n-ellipsis>{{ session.title }}</n-ellipsis>
+        </n-text>
+      </n-flex>
 
       <n-flex class="session-agent" align="center" :size="6">
         <n-avatar src="/coding-agents/hermes.png" round :size="18" />
@@ -73,7 +90,10 @@ function handleClick(event: MouseEvent) {
 
   .session-item-content {
     overflow: hidden;
-
+    .session-title {
+      flex: 1;
+      overflow: hidden;
+    }
     .session-agent, .session-meta, .session-profile {
       font-size: 12px;
     }

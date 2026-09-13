@@ -2,6 +2,8 @@
 * 本地存储
 * */
 
+import { PIN_KEY_PREFIX } from '@/constants/storage-keys.ts'
+
 /**
  * 尽力获取 localStorage 项（自动处理异常）
  * @param key 存储键名
@@ -27,6 +29,7 @@ export function setItemBestEffort(key: string, value: string) {
     localStorage.setItem(key, value)
     return
   } catch (e) {
+    console.error('setItemBestEffort:\n', e)
     if (!isQuotaExceededError(e)) return
   }
 
@@ -67,7 +70,7 @@ export function recoverStorageQuota(storageKey: string){
   const prefixes = [
     'hermes_sessions_cache_v1_',
     'hermes_session_msgs_v1_',
-    'hermes_session_pins_v1_',
+    PIN_KEY_PREFIX,
     'hermes_human_only_v1_',
   ]
   try {
@@ -99,5 +102,32 @@ export function getStoredReasoningEffort(key: string) {
     return localStorage.getItem(key) ?? undefined
   } catch {
     return undefined
+  }
+}
+
+/**
+ * 获取本地存储数据
+ * @param key 存储 Key
+ * @param fallback 缺省数据
+ */
+export function loadJson<T>(key: string, fallback: T): T {
+  const raw = getStoredReasoningEffort(key)
+  try {
+    return raw ? JSON.parse(raw) as T : fallback
+  } catch {
+    return fallback
+  }
+}
+
+/**
+ * 获取本地存储数据
+ * @param key 存储 Key
+ * @param value 存储 Value
+ */
+export function saveJson(key: string, value: unknown) {
+  try {
+    setItemBestEffort(key, JSON.stringify(value))
+  } catch (e) {
+    console.error('saveJson:\n', e)
   }
 }
