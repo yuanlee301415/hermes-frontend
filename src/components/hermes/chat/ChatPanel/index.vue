@@ -13,7 +13,7 @@ import { NewChatModel } from './modules/NewChatForm/index.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
 import { CONTEXTMENU_KEYS, generateContextmenuOptions, sortSessionsWithActiveFirst } from './index.ts'
-import { renameSession } from '@/api/sessions.ts'
+import { renameSession, setSessionWorkspace } from '@/api/sessions.ts'
 </script>
 
 <script setup lang="ts">
@@ -28,6 +28,7 @@ import SessionListItem from '../SessionListItem.vue'
 import ChatInput from '../ChatInput/index.vue'
 import NewChatForm from './modules/NewChatForm/index.vue'
 import OutlinePanel from './modules/OutlinePanel/index.vue'
+import FolderPicker from '../FolderPicker.vue'
 
 defineOptions({ name: 'ChatPanel' })
 
@@ -93,13 +94,24 @@ const contextmenuOptions = computed(() => generateContextmenuOptions(!sessionPre
 const pinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => sessionPrefsStore.isPinned(sess.id))))
 // 未置顶的会话列表（按更新时间排序）
 const unpinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => !sessionPrefsStore.isPinned(sess.id))))
+
 // 重命名
 const ctxMenuRename = reactive({
   // “重命名”弹窗是否可见
   visible: false,
   // 新标题
   value: '',
-  // 重命名会话 ID
+  // 会话 ID
+  sid: ''
+})
+
+// 工作区
+const ctxMenuWorkspace = reactive({
+  // “工作区”弹窗是否可见
+  visible: false,
+  // 新工作区
+  value: '',
+  // 会话 ID
   sid: ''
 })
 
@@ -262,6 +274,14 @@ function handleContextMenuSelect(key: string) {
       ctxMenuRename.visible = true
       break
     }
+    // 工作区
+    case CONTEXTMENU_KEYS.Workspace: {
+      const session = chatStore.sessions.find(_ => _.id === contextmenu.sid)
+      ctxMenuWorkspace.sid = contextmenu.sid
+      ctxMenuWorkspace.value = session?.workspace ?? ''
+      ctxMenuWorkspace.visible = true
+      break
+    }
   }
 }
 
@@ -279,6 +299,22 @@ async function confirmRename() {
     window.$message?.error('重命名失败')
   }
   ctxMenuRename.visible = false
+}
+
+// 设置工作区
+async function confirmWorkspace() {
+  if (!ctxMenuWorkspace.sid) return
+  const ok = await setSessionWorkspace(ctxMenuWorkspace.sid, ctxMenuWorkspace.value.trim())
+  if (ok) {
+    const session = chatStore.sessions.find(_ => _.id === ctxMenuWorkspace.sid)
+    if (session) {
+      session.workspace = ctxMenuWorkspace.value
+    }
+    window.$message?.success('工作区设置成功')
+  } else {
+    window.$message?.error('工作区设置失败')
+  }
+  ctxMenuWorkspace.visible = false
 }
 </script>
 
@@ -399,7 +435,7 @@ async function confirmRename() {
 
 
     <!--================ >>>[新建对话》抽屉] ================-->
-    <n-drawer v-model:show="newChatVisible" width="min(440px, 100vw)" placement="left">
+    <n-drawer v-model:show="newChatVisible" width="min(440px, 100vw)" placement="right">
       <n-drawer-content closable>
         <template #header>新建对话</template>
         <div class="new-chat-content">
@@ -407,7 +443,7 @@ async function confirmRename() {
         </div>
         <template #footer>
           <n-flex :size="10">
-            <n-button>取消</n-button>
+            <n-button @click="newChatVisible = false">取消</n-button>
             <n-button type="primary" size="medium" :disabled="!canConfirmNewChat" @click="handleConfirmNewChat">新建对话</n-button>
           </n-flex>
         </template>
@@ -441,6 +477,20 @@ async function confirmRename() {
       <n-input v-model:value="ctxMenuRename.value"/>
     </n-modal>
     <!--================ [重命名弹窗]<<< ================-->
+
+    <!--================ >>>[工作区弹窗] ================-->
+    <n-modal
+      v-model:show="ctxMenuWorkspace.visible"
+      title="设置工作区"
+      preset="dialog"
+      auto-focus
+      positive-text="确认"
+      negative-text="取消"
+      @positive-click="confirmWorkspace"
+    >
+      <FolderPicker v-model:path="ctxMenuWorkspace.value"/>
+    </n-modal>
+    <!--================ [工作区弹窗]<<< ================-->
   </div>
 </template>
 

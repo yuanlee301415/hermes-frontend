@@ -90,3 +90,20 @@ export async function renameSession(sid: Session['id'], title: string) {
     return false
   }
 }
+
+/**
+ * 设置工作区
+ * @param sid 会话 ID
+ * @param workspace 工作区
+ */
+export async function setSessionWorkspace(sid: Session['id'], workspace: string): Promise<boolean> {
+  try {
+    await request(`api/hermes/sessions/${sid}/workspace`, {
+      method: 'post',
+      body: JSON.stringify({ workspace: workspace }),
+    })
+    return true
+  } catch {
+    return false
+  }
+}
