@@ -3,7 +3,7 @@
 * - 会话列表
 * - 会话上下文长度
 * */
-import { request } from './client.ts'
+import { request, getBaseUrlValue, getApiKey } from './client.ts'
 import type { Session } from '@/models/Session.ts'
 
 export interface SessionSummary {
@@ -79,7 +79,7 @@ export async function getContextLengthApi(profile?: string, provider?: string, m
  * @param sid 会话 ID
  * @param title 会话标题
  */
-export async function renameSession(sid: Session['id'], title: string) {
+export async function renameSessionApi(sid: Session['id'], title: string) {
   try {
     await request(`api/hermes/sessions/${sid}/rename`, {
       method: 'post',
@@ -96,7 +96,7 @@ export async function renameSession(sid: Session['id'], title: string) {
  * @param sid 会话 ID
  * @param workspace 工作区
  */
-export async function setSessionWorkspace(sid: Session['id'], workspace: string): Promise<boolean> {
+export async function setSessionWorkspaceApi (sid: Session['id'], workspace: string): Promise<boolean> {
   try {
     await request(`api/hermes/sessions/${sid}/workspace`, {
       method: 'post',
@@ -106,4 +106,28 @@ export async function setSessionWorkspace(sid: Session['id'], workspace: string)
   } catch {
     return false
   }
+}
+
+/**
+ * 导出会话
+ * @param id 会话 ID
+ * @param mode 模式（全量/压缩）
+ * @param ext 导出文件格式（.json/.txt）
+ */
+export async function exportSessionApi (id: string, mode: 'full' | 'compressed' = 'full', ext: 'json' | 'txt' = 'json'): Promise<void> {
+  const baseUrl = getBaseUrlValue()
+  const token = getApiKey()
+  const url = `${baseUrl}/api/hermes/sessions/${id}/export?mode=${mode}&ext=${ext}&token=${encodeURIComponent(token)}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Export failed')
+  const blob = await res.blob()
+  const contentDisposition = res.headers.get('Content-Disposition') || ''
+  let filename = `session_${id}.${ext}`
+  const match = contentDisposition.match(/filename\*?=(?:UTF-8'')?([^;\n]+)/i)
+  if (match) filename = decodeURIComponent(match[1].replace(/"/g, ''))
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
 }

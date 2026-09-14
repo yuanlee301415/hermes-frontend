@@ -20,19 +20,19 @@ export const CONTEXTMENU_KEYS = {
   CopyId: 'copy-id'
 } as const;
 
+export type ContextmenuKey = typeof CONTEXTMENU_KEYS[keyof typeof CONTEXTMENU_KEYS]
+
 /**
  * 生成右键菜单
  * @param showPin 是否显示“置顶/取消置顶”菜单
- * @param showModel 是否显示“设置模型”菜单
  * @return NDropdown 组件 `options` 列表
  */
-export function generateContextmenuOptions(showPin: boolean, showModel: boolean) {
+export function generateContextmenuOptions(showPin: boolean) {
   const options: DropdownOption[] = [
     { label: '置顶', key: CONTEXTMENU_KEYS.Pin, show: showPin },
     { label: '取消置顶', key: CONTEXTMENU_KEYS.UnPin, show: !showPin },
     { label: '重命名', key: CONTEXTMENU_KEYS.Rename },
     { label: '设置工作区', key: CONTEXTMENU_KEYS.Workspace },
-    { label: '设置模型', key: CONTEXTMENU_KEYS.Model, show: showModel },
     {
       label: '导出', key: CONTEXTMENU_KEYS.Export, children: [
         { label: '全量导出', key: CONTEXTMENU_KEYS.ExportFull, children: [

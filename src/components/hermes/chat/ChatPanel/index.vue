@@ -12,8 +12,8 @@ import { Session } from '@/models/Session.ts'
 import { NewChatModel } from './modules/NewChatForm/index.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
-import { CONTEXTMENU_KEYS, generateContextmenuOptions, sortSessionsWithActiveFirst } from './index.ts'
-import { renameSession, setSessionWorkspace } from '@/api/sessions.ts'
+import { type ContextmenuKey, CONTEXTMENU_KEYS, generateContextmenuOptions, sortSessionsWithActiveFirst } from './index.ts'
+import { renameSessionApi, setSessionWorkspaceApi, exportSessionApi } from '@/api/sessions.ts'
 </script>
 
 <script setup lang="ts">
@@ -86,12 +86,13 @@ const contextmenu = reactive({
   x: 0,
   y: 0
 })
-// 右击的会话
-const contextSession = computed(() => chatStore.sessions.find(_ => _.id === contextmenu.sid) ?? null)
-// 右键菜单
-const contextmenuOptions = computed(() => generateContextmenuOptions(!sessionPrefsStore.isPinned(contextmenu.sid), contextSession.value?.source === Session.SOURCE.Cli))
+
+// 右键菜单选项
+const contextmenuOptions = computed(() => generateContextmenuOptions(!sessionPrefsStore.isPinned(contextmenu.sid)))
+
 // 已置顶的会话列表（按更新时间排序）
 const pinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => sessionPrefsStore.isPinned(sess.id))))
+
 // 未置顶的会话列表（按更新时间排序）
 const unpinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => !sessionPrefsStore.isPinned(sess.id))))
 
@@ -254,7 +255,7 @@ function handleClickOutside() {
  * 选择菜单项
  * @param key
  */
-function handleContextMenuSelect(key: string) {
+function handleContextMenuSelect(key: ContextmenuKey) {
   console.warn('handleContextMenuSelect>key:', key)
   contextmenu.visible = false
   if (!contextmenu.sid) return
@@ -282,13 +283,17 @@ function handleContextMenuSelect(key: string) {
       ctxMenuWorkspace.visible = true
       break
     }
+    // 导出会话
+    default: {
+      exportSession(key)
+    }
   }
 }
 
 // 重命名
 async function confirmRename() {
   if (!ctxMenuRename.sid || !ctxMenuRename.value.trim()) return false
-  const ok = await renameSession(ctxMenuRename.sid, ctxMenuRename.value)
+  const ok = await renameSessionApi(ctxMenuRename.sid, ctxMenuRename.value)
   if (ok) {
     const session = chatStore.sessions.find(_ => _.id === ctxMenuRename.sid)
     if (session) {
@@ -304,7 +309,7 @@ async function confirmRename() {
 // 设置工作区
 async function confirmWorkspace() {
   if (!ctxMenuWorkspace.sid) return
-  const ok = await setSessionWorkspace(ctxMenuWorkspace.sid, ctxMenuWorkspace.value.trim())
+  const ok = await setSessionWorkspaceApi(ctxMenuWorkspace.sid, ctxMenuWorkspace.value.trim())
   if (ok) {
     const session = chatStore.sessions.find(_ => _.id === ctxMenuWorkspace.sid)
     if (session) {
@@ -315,6 +320,46 @@ async function confirmWorkspace() {
     window.$message?.error('工作区设置失败')
   }
   ctxMenuWorkspace.visible = false
+}
+
+/**
+ * 解析导出选项的 key，获取导出模式和文件格式
+ * @param key 菜单选项 key
+ * @returns 导出模式和格式，或 null
+ */
+function parseExportKey(key: ContextmenuKey): {mode: 'full' | 'compressed'; ext: 'json' | 'txt'} | null {
+  switch (key) {
+    case CONTEXTMENU_KEYS.ExportFullJson:
+      return { mode: 'full', ext: 'json' }
+    case CONTEXTMENU_KEYS.ExportFullTxt:
+      return { mode: 'full', ext: 'txt' }
+    case CONTEXTMENU_KEYS.ExportCompressedJson:
+      return { mode: 'compressed', ext: 'json' }
+    case CONTEXTMENU_KEYS.ExportCompressedTxt:
+      return { mode: 'compressed', ext: 'txt' }
+    default:
+      return null
+  }
+}
+
+/**
+ * 导出会话
+ * @param key
+ */
+async function exportSession(key: ContextmenuKey) {
+  console.log('exportSession:', key)
+  const exportInfo = parseExportKey(key)
+  if (!exportInfo) return
+  const loadingMsg = exportInfo.mode === 'compressed' ? window.$message?.loading('正在压缩上下文，请稍候...') : null
+  try {
+    await exportSessionApi(contextmenu.sid, exportInfo.mode, exportInfo.ext)
+    window.$message?.success('会话已导出')
+  } catch (e) {
+    console.error(e)
+    window.$message?.error('导出失败')
+  } finally {
+    loadingMsg?.destroy()
+  }
 }
 </script>
 
