@@ -283,6 +283,11 @@ function handleContextMenuSelect(key: ContextmenuKey) {
       ctxMenuWorkspace.visible = true
       break
     }
+    // 在新标签页打开
+    case CONTEXTMENU_KEYS.OpenLink: {
+      openSessionInNewTab()
+      break
+    }
     // 导出会话
     default: {
       exportSession(key)
@@ -360,6 +365,26 @@ async function exportSession(key: ContextmenuKey) {
   } finally {
     loadingMsg?.destroy()
   }
+}
+
+/**
+ * 构建会话的完整URL（包含协议、域名和路径）
+ * @param sessionId 会话ID
+ * @param profile 配置文件名称（可选）
+ * @returns 完整 URL
+ */
+function buildSessionUrl(sessionId: Session['id'], profile?: Session['profile']) {
+  const _router = router.resolve({
+    name: SESSION_ROUTE_NAME,
+    params: { sessionId },
+    query: { profile }
+  })
+  return new URL(location.pathname + _router.href, location.origin).toString()
+}
+
+// 在新标签页打开
+function openSessionInNewTab() {
+  window.open(buildSessionUrl(contextmenu.sid))
 }
 </script>
 
