@@ -9,11 +9,12 @@ import type { SelectOption } from 'naive-ui'
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { Session } from '@/models/Session.ts'
-import { NewChatModel } from './modules/NewChatForm/index.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
-import { type ContextmenuKey, CONTEXTMENU_KEYS, generateContextmenuOptions, sortSessionsWithActiveFirst } from './index.ts'
 import { renameSessionApi, setSessionWorkspaceApi, exportSessionApi } from '@/api/sessions.ts'
+import { copyToClipboard } from '@/utils/clipboard.ts'
+import { type ContextmenuKey, CONTEXTMENU_KEYS, generateContextmenuOptions, sortSessionsWithActiveFirst } from './index.ts'
+import { NewChatModel } from './modules/NewChatForm/index.ts'
 </script>
 
 <script setup lang="ts">
@@ -288,6 +289,11 @@ function handleContextMenuSelect(key: ContextmenuKey) {
       openSessionInNewTab()
       break
     }
+    // 复制会话链接
+    case CONTEXTMENU_KEYS.CopyLink: {
+      copySessionLink(contextmenu.sid)
+      break
+    }
     // 导出会话
     default: {
       exportSession(key)
@@ -385,6 +391,21 @@ function buildSessionUrl(sessionId: Session['id'], profile?: Session['profile'])
 // 在新标签页打开
 function openSessionInNewTab() {
   window.open(buildSessionUrl(contextmenu.sid))
+}
+
+/**
+ * 复制会话链接到剪贴板
+ * @param sid 会话 ID
+ */
+async function copySessionLink(sid: Session['id']) {
+  const session = chatStore.sessions.find(_ => _.id === sid)
+  if (!session) return
+  const ok = await copyToClipboard(buildSessionUrl(session.id, session.profile))
+  if (ok) {
+    window.$message?.success('复制成功')
+  } else {
+    window.$message?.error('复制失败')
+  }
 }
 </script>
 
