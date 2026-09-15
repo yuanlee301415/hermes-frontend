@@ -294,6 +294,11 @@ function handleContextMenuSelect(key: ContextmenuKey) {
       copySessionLink(contextmenu.sid)
       break
     }
+    // 复制会话ID
+    case CONTEXTMENU_KEYS.CopyId: {
+      copySessionId(contextmenu.sid)
+      break
+    }
     // 导出会话
     default: {
       exportSession(key)
@@ -401,6 +406,19 @@ async function copySessionLink(sid: Session['id']) {
   const session = chatStore.sessions.find(_ => _.id === sid)
   if (!session) return
   const ok = await copyToClipboard(buildSessionUrl(session.id, session.profile))
+  if (ok) {
+    window.$message?.success('复制成功')
+  } else {
+    window.$message?.error('复制失败')
+  }
+}
+
+/**
+ * 复制会话ID到剪贴板
+ * @param sid 会话ID
+ */
+async function copySessionId(sid: Session['id']) {
+  const ok = await copyToClipboard(sid)
   if (ok) {
     window.$message?.success('复制成功')
   } else {
