@@ -50,6 +50,11 @@ export interface HermesMessage {
   reasoning: string | null
 }
 
+export interface BatchDeleteSessionTarget {
+  id: string
+  profile?: string | null
+}
+
 // 获取：会话列表
 export async function getSessionsApi(source?: string, limit?: number, profile?: string): Promise<SessionSummary[]> {
   const params = new URLSearchParams()
@@ -130,4 +135,30 @@ export async function exportSessionApi (id: string, mode: 'full' | 'compressed' 
   a.download = filename
   a.click()
   URL.revokeObjectURL(a.href)
+}
+
+/**
+ * 批量删除会话
+ * @param targets
+ */
+export async function batchDeleteSessions(targets: Array<string | BatchDeleteSessionTarget>): Promise<{ deleted: number; failed: number; errors: Array<{ id: string; error: string }> }> {
+  try {
+    const sessions = targets.map(target =>
+      typeof target === 'string'
+        ? { id: target }
+        : { id: target.id, profile: target.profile || undefined },
+    )
+    return await request<{ deleted: number; failed: number; errors: Array<{ id: string; error: string }> }>(
+      'api/hermes/sessions/batch-delete',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ids: sessions.map(session => session.id),
+          sessions,
+        }),
+      }
+    )
+  } catch (err: any) {
+    throw err
+  }
 }

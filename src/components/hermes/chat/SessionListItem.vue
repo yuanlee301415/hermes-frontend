@@ -12,23 +12,29 @@ const props = defineProps<{
   active: boolean
   pinned: boolean
   to?: string
-/*Todo:
-  canDelete: boolean
-  streaming?: boolean
   selectable?: boolean
   selected?: boolean
+  streaming?: boolean
+
+/*Todo:
+  canDelete: boolean
+
   showProfile?: boolean
 */
 }>()
 
 const emit = defineEmits<{
-  (e: 'select'): void
+  // 切换会话
+  (e: 'switch-session'): void
+  // 右键
   (e: 'contextmenu', evt: MouseEvent): void
+  // 批量选择》选择单个会话
+  (e: 'toggle-select'): void
 }>()
 
 function handleClick(event: MouseEvent) {
   if (props.to) event?.preventDefault()
-  emit('select')
+  emit('switch-session')
 }
 
 </script>
@@ -40,6 +46,9 @@ function handleClick(event: MouseEvent) {
     @click="handleClick"
     @contextmenu="emit('contextmenu', $event)"
   >
+    <div v-if="selectable" class="session-item-checkbox">
+      <n-checkbox :checked="selected" v-show="!streaming" @click.stop="emit('toggle-select')"/>
+    </div>
     <div class="session-item-content flex-1">
       <n-flex align="center" :size="4">
         <n-icon v-if="pinned"><Pinned/></n-icon>
@@ -70,7 +79,7 @@ function handleClick(event: MouseEvent) {
       </n-flex>
     </div>
 
-    <n-text depth="2" class="session-item-delete">&times;</n-text>
+    <n-text v-if="!selectable" depth="2" class="session-item-delete">&times;</n-text>
   </a>
 </template>
 

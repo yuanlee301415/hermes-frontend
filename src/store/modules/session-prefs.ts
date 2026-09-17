@@ -42,8 +42,15 @@ export const useSessionPrefsStore = defineStore('sessionPrefsStore', () => {
     persistPins()
   }
 
+  function removePinneds(sids: Session['id'][]) {
+    pinnedIds.value = pinnedIds.value.filter(pid => !sids.includes(pid))
+    persistPins()
+    return true
+  }
+
   return {
     isPinned,
-    togglePinned
+    togglePinned,
+    removePinneds
   }
 })

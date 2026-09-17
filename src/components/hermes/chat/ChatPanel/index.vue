@@ -1,7 +1,7 @@
 <!--
 对话
 Todo:
-- [ ] header actions
+- [ ] 配置文件过滤器
 - [ ] 迁移 `/shard` 到 `/chat` 目录下
 -->
 <script lang="ts">
@@ -11,12 +11,13 @@ import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { Session } from '@/models/Session.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
+import { batchDeleteSessions } from '@/api/sessions.ts'
 import { sortSessionsWithActiveFirst } from './index.ts'
 import { NewChatModel } from './modules/NewChatForm/index.ts'
 </script>
 
 <script setup lang="ts">
-import { CheckboxOutline, AddOutline, GridOutline, MenuOutline, CopyOutline } from '@vicons/ionicons5'
+import { CheckboxOutline, AddOutline, GridOutline, MenuOutline, CopyOutline, TrashBinOutline, CloseOutline } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/store/modules/chat.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
@@ -54,7 +55,6 @@ const outlineVisible = ref(false)
 /*
 * ==================== 会话列表 ====================
 * */
-
 // 已置顶的会话列表（按更新时间排序）
 const pinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => sessionPrefsStore.isPinned(sess.id))))
 
@@ -65,7 +65,6 @@ const unpinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.se
 /*
 * ==================== 新建对话 ====================
 * */
-
 const newChatVisible = ref(false)
 const newChatLoading = ref(true)
 const newChatModel = reactive<NewChatModel>({} as NewChatModel)
@@ -85,8 +84,21 @@ const canConfirmNewChat = computed(() => {
 /*
 * ==================== 会话列表右键 ====================
 * */
-
 const sessionContextmenuRef = useTemplateRef<InstanceType<typeof SessionContextmenu>>('sessionContextmenuRef')
+
+/*
+* ==================== 批量选择 ====================
+* */
+const batchSelection = reactive({
+  // 启用
+  enable: false,
+  // 选择的会话 ID
+  selectedSids: new Set<Session['id']>(),
+  // 显示确认
+  confirmVisible: false,
+  // 删除中
+  isDeleting: false
+})
 
 
 /*
@@ -94,10 +106,11 @@ const sessionContextmenuRef = useTemplateRef<InstanceType<typeof SessionContextm
 * */
 
 /**
- * 单击会话列表项跳转到会话页面
+ * 切换会话
+ * - 跳转到会话页面
  * @param sessionId
  */
-async function handleSessionClick(sessionId: string) {
+async function handleSwitchSession(sessionId: string) {
   await router.push({
     name: SESSION_ROUTE_NAME,
     params: {
@@ -130,9 +143,6 @@ async function handleOpenNewChat() {
 
 // 确认“新建对话”
 async function handleConfirmNewChat() {
-  // console.warn('handleConfirmNewChat')
-  // console.table(newChatModel)
-  // 如果选择的是编码代理（非Hermes），检查是否已安装
   if (newChatModel.agent !== Session.AGENT_TYPE.Hermes) {
     newChatLoading.value = true
     try {
@@ -215,6 +225,80 @@ function handleNavigate(targetId: string) {
 function onSessionContextmenu(evt: MouseEvent, sid: Session['id']) {
   sessionContextmenuRef.value?.openContextmenu(evt, sid)
 }
+
+/*
+* ==================== 批量选择 ====================
+* */
+
+// 切换批量选择模式
+function handleToggleBatchMode() {
+  batchSelection.enable = !batchSelection.enable
+  if (!batchSelection.enable) {
+    batchSelection.confirmVisible = false
+    batchSelection.selectedSids.clear()
+  }
+}
+
+// 全选所有会话（排除当前活跃会话）
+function handleSelectAllSessions() {
+  if (batchSelection.isDeleting) return
+  batchSelection.selectedSids = new Set(chatStore.sessions.flatMap(_ => chatStore.isSessionLive(_.id) ? [] : [_.id]))
+}
+
+// 确认删除
+function handleBatchDeleteConfirm() {
+  void batchDelete()
+  return false
+}
+
+// 执行批量删除
+async function batchDelete() {
+  try {
+    const targets = Array.from(batchSelection.selectedSids).flatMap(id => {
+      const sess = chatStore.sessions.find(sess => sess.id === id)
+      return sess ? [{ id: sess.id, profile: sess.profile }] : []
+    })
+    if (!targets.length) return
+
+    batchSelection.isDeleting = true
+    const result = await batchDeleteSessions(targets)
+    if (result.deleted) {
+      // 从固定列表中移除已删除的会话
+      sessionPrefsStore.removePinneds([...batchSelection.selectedSids])
+      // 从本地存储中移除已删除的会话（通过重新加载而非手动过滤）
+      await chatStore.loadSessions(chatStore.sessionProfileFilter)
+      window.$message?.success(`已删除 ${result.deleted} 个会话`)
+      if (result.failed) {
+        window.$message?.error(`${result.failed} 个会话删除失败`)
+      }
+    } else {
+      throw result
+    }
+  } catch (e) {
+    console.error(e)
+    window.$message?.error(`批量删除失败`)
+  } finally {
+    // 重置状态
+    batchSelection.isDeleting = false
+    batchSelection.confirmVisible = false
+    batchSelection.enable = false
+    batchSelection.selectedSids.clear()
+  }
+}
+
+/**
+ * 切换单个会话的选择状态
+ * @param sid 会话 ID
+ */
+function onToggleSelection(sid: Session['id']) {
+  const next = new Set([...batchSelection.selectedSids])
+  if (next.has(sid)) {
+    next.delete(sid)
+  } else {
+    next.add(sid)
+  }
+  batchSelection.selectedSids = next
+}
 </script>
 
 <template>
@@ -226,17 +310,57 @@ function onSessionContextmenu(evt: MouseEvent, sid: Session['id']) {
 
       <div class="session-header">
         <n-text strong>会话</n-text>
+
         <n-flex justify="center" align="center" :size="5">
-          <n-button quaternary circle size="small">
+          <!--============ >>>[批量选择] ============-->
+          <n-button v-if="!batchSelection.enable" title="批量选择" quaternary circle size="tiny" @click="handleToggleBatchMode">
             <template #icon>
-              <n-icon size="15">
+              <n-icon>
                 <CheckboxOutline />
               </n-icon>
             </template>
           </n-button>
-          <n-button quaternary circle size="small" @click="handleOpenNewChat()">
+
+          <template v-else>
+            <n-button :disabled="batchSelection.isDeleting" title="全选" quaternary circle size="tiny" @click="handleSelectAllSessions">
+              <template #icon>
+                <n-icon>
+                  <CheckboxOutline />
+                </n-icon>
+              </template>
+            </n-button>
+
+            <n-popconfirm
+              v-if="batchSelection.selectedSids.size"
+              v-model:show="batchSelection.confirmVisible"
+              :positive-button-props="{loading: batchSelection.isDeleting}"
+              @positive-click="handleBatchDeleteConfirm"
+            >
+              <template #trigger>
+                <n-button title="批量删除" quaternary circle size="tiny" type="error">
+                  <template #icon>
+                    <n-icon>
+                      <TrashBinOutline />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              确定删除选择的 {{ batchSelection.selectedSids.size }} 个会话吗？
+            </n-popconfirm>
+
+            <n-button v-if="batchSelection.enable" quaternary circle size="tiny" @click="handleToggleBatchMode">
+              <template #icon>
+                <n-icon>
+                  <CloseOutline />
+                </n-icon>
+              </template>
+            </n-button>
+          </template>
+          <!--============ [批量选择]<<< ============-->
+
+          <n-button quaternary circle size="tiny" title="新建对话" @click="handleOpenNewChat()">
             <template #icon>
-              <n-icon size="15">
+              <n-icon>
                 <AddOutline />
               </n-icon>
             </template>
@@ -260,8 +384,12 @@ function onSessionContextmenu(evt: MouseEvent, sid: Session['id']) {
             :session="session"
             :active="session.id === chatStore.activeSessionId"
             :pinned="true"
-            @select="handleSessionClick(session.id)"
+            :selectable="batchSelection.enable"
+            :streaming="chatStore.isSessionLive(session.id)"
+            :selected="batchSelection.selectedSids.has(session.id)"
+            @switch-session="handleSwitchSession(session.id)"
             @contextmenu="onSessionContextmenu($event, session.id)"
+            @toggle-select="onToggleSelection(session.id)"
           />
         </template>
         <SessionListItem
@@ -270,8 +398,12 @@ function onSessionContextmenu(evt: MouseEvent, sid: Session['id']) {
           :session="session"
           :active="session.id === chatStore.activeSessionId"
           :pinned="false"
-          @select="handleSessionClick(session.id)"
+          :selectable="batchSelection.enable"
+          :streaming="chatStore.isSessionLive(session.id)"
+          :selected="batchSelection.selectedSids.has(session.id)"
+          @switch-session="handleSwitchSession(session.id)"
           @contextmenu="onSessionContextmenu($event, session.id)"
+          @toggle-select="onToggleSelection(session.id)"
         />
       </div>
     </aside>

@@ -2917,6 +2917,7 @@ export const useChatStore = defineStore('chatStore', () => {
     removeQueuedMessage,
     refreshSessionListOnly,
     reloadActivatedSession,
-    newChat
+    newChat,
+    isSessionLive
   }
 })
