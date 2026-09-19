@@ -28,3 +28,8 @@ export function genMenus(routes: AppRouteRecordRaw[], path = '', result: Menu[] 
 
   return result
 }
+
+
+export function sameIds(a: string[], b: string[]) {
+  return a.length === b.length && a.every((value, index) => value === b[index])
+}

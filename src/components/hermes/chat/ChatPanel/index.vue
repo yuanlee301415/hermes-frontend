@@ -99,6 +99,15 @@ const profileOptions = computed(() => [
   ]
 )
 
+/**
+ * 监听会话加载状态和会话ID变化，清理不存在的置顶会话记录
+ */
+watch(() => [chatStore.sessionsLoaded, ...chatStore.sessions.map(_ => _.id)], (value) => {
+  const sids = value.slice(1) as Session['id'][]
+  if (!value[0] || !sids.length) return
+  sessionPrefsStore.pruneMissingSessions(sids)
+}, { immediate: true })
+
 /*
 * ==================== 会话列表 ====================
 * */

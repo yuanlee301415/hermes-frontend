@@ -1,9 +1,11 @@
+import type { Session } from '@/models/Session.ts'
+
 import { defineStore } from 'pinia'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { PIN_KEY_PREFIX } from '@/constants/storage-keys.ts'
 import { loadJson, saveJson} from '@/store/shared/storage.ts'
-import type { Session } from '@/models/Session.ts'
+import { sameIds } from '../shared/index.ts'
 
 function pinKeys(profileName: string) {
   return `${PIN_KEY_PREFIX}${profileName}`
@@ -48,9 +50,22 @@ export const useSessionPrefsStore = defineStore('sessionPrefsStore', () => {
     return true
   }
 
+  /**
+   * 清理不存在的置顶会话记录
+   * @param existingIds 会话 ID 数组
+   */
+  function pruneMissingSessions(existingIds: Session['id'][]) {
+    const nextPinnedIds = pinnedIds.value.filter(id => existingIds.includes(id))
+    if (sameIds(nextPinnedIds, pinnedIds.value)) return false
+    pinnedIds.value = nextPinnedIds
+    persistPins()
+    return true
+  }
+
   return {
     isPinned,
     togglePinned,
-    removePinneds
+    removePinneds,
+    pruneMissingSessions
   }
 })
