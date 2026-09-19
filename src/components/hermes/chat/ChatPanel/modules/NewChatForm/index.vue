@@ -101,6 +101,24 @@ defineExpose({
 
 syncModelSelection()
 
+watch(() => [formModel.value.agent, formModel.value.codingAgentMode, formModel.value.profile], () => {
+  ensureProviderSelection()
+})
+
+/**
+ * 确保新建聊天的提供商选择有效，如果当前模型不在当前提供商中则重置选择
+ */
+function ensureProviderSelection() {
+  if (!usersProviderModel.value) return
+  const currentGroup = selectedProviderGroup.value
+  // 如果当前提供商有效且当前模型在其模型列表中，只更新API模式
+  if (currentGroup && currentGroup.models.includes(formModel.value.model)) {
+    syncApiMode()
+  } else {
+    // 否则重置为默认选择
+    syncModelSelection()
+  }
+}
 
 /**
  * 同步更新新建聊天的模型选择（重置为默认值）
@@ -224,7 +242,7 @@ function handelProviderChange(val: string) {
         </dd>
       </dl>
 
-      <dl>
+      <dl v-if="isCodingAgent">
         <dt>启动方式</dt>
         <dd>
           <n-radio-group v-model:value="formModel.codingAgentMode">
