@@ -20,8 +20,8 @@ interface FolderListResponse {
 export async function getFoldersApi(path?: string): Promise<FolderListResponse> {
   const params = new URLSearchParams()
   if (path) params.set('path', path)
-  const query = params.size ? '?' + params.toString() : ''
-  return await request<FolderListResponse>(`api/hermes/workspace/folders${query}`, {
+  const query = params.toString()
+  return await request<FolderListResponse>(`api/hermes/workspace/folders${query ? `?${query}` : ''}`, {
     method: 'get'
   })
 }

@@ -61,8 +61,8 @@ export async function getSessionsApi(source?: string, limit?: number, profile?: 
   if (source) params.set('source', source)
   if (limit) params.set('limit', String(limit))
   if (profile) params.set('profile', profile)
-  const query = params.size ? '?' + params.toString() : ''
-  const res = await request<{sessions: SessionSummary[]}>(`api/hermes/sessions${query}`, {
+  const query = params.toString()
+  const res = await request<{sessions: SessionSummary[]}>(`api/hermes/sessions${query ? `?${query}` : ''}`, {
     method: 'get'
   })
   return res.sessions
