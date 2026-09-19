@@ -1,11 +1,10 @@
 <!--
 对话
 Todo:
-- [ ] 配置文件过滤器
+- [ ] 整理
 - [ ] 迁移 `/shard` 到 `/chat` 目录下
 -->
 <script lang="ts">
-import type { SelectOption } from 'naive-ui'
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { Session } from '@/models/Session.ts'
@@ -31,17 +30,6 @@ import OutlinePanel from './modules/OutlinePanel/index.vue'
 import SessionContextmenu from './modules/SessionContextmenu/index.vue'
 
 defineOptions({ name: 'ChatPanel' })
-
-const profileOptions: SelectOption[] = [
-  {
-    label: '全部配置',
-    value: ''
-  },
-  {
-    label: DEFAULT_PROFILE_NAME,
-    value: DEFAULT_PROFILE_NAME
-  }
-]
 
 const router = useRouter()
 const chatStore = useChatStore()
@@ -100,6 +88,16 @@ const batchSelection = reactive({
   isDeleting: false
 })
 
+/*
+* ==================== 配置文件过滤器 ====================
+* */
+const profileOptions = computed(() => [
+    { label: '全部配置', value: ''},
+    ...profileStore.profiles.map(_ => ({
+      label: _.name, value: _.name
+    }))
+  ]
+)
 
 /*
 * ==================== 会话列表 ====================
@@ -299,6 +297,16 @@ function onToggleSelection(sid: Session['id']) {
   }
   batchSelection.selectedSids = next
 }
+
+
+/**
+ * 处理配置文件过滤器变化
+ * @param value 选中的配置文件值
+ */
+async function handleProfileFilterChange(value: string) {
+  chatStore.sessionProfileFilter = value
+  await chatStore.loadSessions(chatStore.sessionProfileFilter)
+}
 </script>
 
 <template>
@@ -369,7 +377,7 @@ function onToggleSelection(sid: Session['id']) {
       </div>
 
       <div class="session-profile">
-        <n-select v-model:value="profileFilterValue" :options="profileOptions" size="small" />
+        <n-select v-model:value="profileFilterValue" :options="profileOptions" size="small" @update:value="handleProfileFilterChange" />
       </div>
 
       <div v-if="showSessions" class="session-items flex-1">
