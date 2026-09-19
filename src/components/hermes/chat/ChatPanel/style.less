@@ -71,18 +71,33 @@
       border-bottom: 1px solid var(--border-color);
       gap: 0 20px;
       .header-left {
-        flex: 1;
-        flex-flow: nowrap;
-        overflow: hidden;
+        display: flex;
+        align-items: center;
         gap: 8px;
+        overflow: hidden;
+        flex: 1;
+        min-width: 0;
 
         .header-session-title {
-          flex: 1;
-          overflow: hidden;
           font-size: 16px;
+          font-weight: 600;
           color: var(--text-primary);
           white-space: nowrap;
+          overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        .workspace-badge {
+          font-size: 11px;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.05);
+          padding: 2px 8px;
+          border-radius: 4px;
+          max-width: 160px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          cursor: default;
         }
       }
       .header-actions {

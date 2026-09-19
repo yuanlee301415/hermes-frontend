@@ -1,6 +1,19 @@
 <!--
 对话
+- 批量选择 & 删除
+- 新建对话
+- 配置文件过滤器
+- 会话列表
+- 删除会话
+- 右键
+- 会话标题
+- 会话大纲
+- 复制会话ID
+- 消息列表
+- 输入框
+
 Todo:
+- [ ] DrawerPanel
 - [ ] 整理
 - [ ] 迁移 `/shard` 到 `/chat` 目录下
 -->
@@ -405,21 +418,38 @@ async function handleProfileFilterChange(value: string) {
       </div>
 
       <div class="session-profile">
-        <n-select v-model:value="profileFilterValue" :options="profileOptions" size="small" @update:value="handleProfileFilterChange" />
+        <n-select v-model:value="profileFilterValue" :options="profileOptions" size="small" :loading="profileStore.loading" @update:value="handleProfileFilterChange" />
       </div>
 
       <div v-if="showSessions" class="session-items flex-1">
-        <template v-if="pinnedSessions.length">
-          <div class="session-group-header session-group-header--static">
-            <span class="session-group-label">已置顶</span>
-            <span class="session-group-count">({{ pinnedSessions.length }})</span>
-          </div>
+        <n-empty v-if="!chatStore.sessions.length"/>
+        <template v-else>
+          <template v-if="pinnedSessions.length">
+            <div class="session-group-header session-group-header--static">
+              <span class="session-group-label">已置顶</span>
+              <span class="session-group-count">({{ pinnedSessions.length }})</span>
+            </div>
+            <SessionListItem
+              v-for="session of pinnedSessions"
+              :key="`pinned-${session.id}`"
+              :session="session"
+              :active="session.id === chatStore.activeSessionId"
+              :pinned="true"
+              :selectable="batchSelection.enable"
+              :streaming="chatStore.isSessionLive(session.id)"
+              :selected="batchSelection.selectedSids.has(session.id)"
+              @switch-session="handleSwitchSession(session.id)"
+              @contextmenu="onSessionContextmenu($event, session.id)"
+              @toggle-select="onToggleSelection(session.id)"
+              @delete="onDeleteSession(session.id)"
+            />
+          </template>
           <SessionListItem
-            v-for="session of pinnedSessions"
-            :key="`pinned-${session.id}`"
+            v-for="session of unpinnedSessions"
+            :key="session.id"
             :session="session"
             :active="session.id === chatStore.activeSessionId"
-            :pinned="true"
+            :pinned="false"
             :selectable="batchSelection.enable"
             :streaming="chatStore.isSessionLive(session.id)"
             :selected="batchSelection.selectedSids.has(session.id)"
@@ -428,21 +458,8 @@ async function handleProfileFilterChange(value: string) {
             @toggle-select="onToggleSelection(session.id)"
             @delete="onDeleteSession(session.id)"
           />
+
         </template>
-        <SessionListItem
-          v-for="session of unpinnedSessions"
-          :key="session.id"
-          :session="session"
-          :active="session.id === chatStore.activeSessionId"
-          :pinned="false"
-          :selectable="batchSelection.enable"
-          :streaming="chatStore.isSessionLive(session.id)"
-          :selected="batchSelection.selectedSids.has(session.id)"
-          @switch-session="handleSwitchSession(session.id)"
-          @contextmenu="onSessionContextmenu($event, session.id)"
-          @toggle-select="onToggleSelection(session.id)"
-          @delete="onDeleteSession(session.id)"
-        />
       </div>
     </aside>
     <!--================ [Session list]<<< ================-->
@@ -452,14 +469,15 @@ async function handleProfileFilterChange(value: string) {
 
       <!--============ >>>[Chat header] ============-->
       <header class="chat-header">
-        <n-flex class="header-left" align="center" :size="8">
+        <div class="header-left">
           <n-button quaternary circle size="small" @click="showSessions = !showSessions">
             <template #icon>
               <n-icon size="small"><GridOutline/></n-icon>
             </template>
           </n-button>
           <h3 class="header-session-title">{{ chatStore.activeSession?.title }}</h3>
-        </n-flex>
+          <span v-if="chatStore.activeSession?.workspace" class="workspace-badge">📁{{chatStore.activeSession.workspace.split('/').pop() || chatStore.activeSession.workspace}}</span>
+        </div>
 
         <n-flex class="header-actions" align="center" :size="8">
           <n-button quaternary circle size="small" title="会话大纲" @click="outlineVisible = !outlineVisible">

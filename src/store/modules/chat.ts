@@ -2920,6 +2920,7 @@ export const useChatStore = defineStore('chatStore', () => {
     queuedUserMessages,
     compressionState,
     abortState,
+    isLoadingSessions,
 
     loadSessions,
     switchSession,
