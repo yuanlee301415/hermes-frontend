@@ -13,6 +13,8 @@ import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
 import { batchDeleteSessions } from '@/api/sessions.ts'
 import { sortSessionsWithActiveFirst } from './index.ts'
 import { NewChatModel } from './modules/NewChatForm/index.ts'
+import { deleteSessionApi } from '@/api/sessions.ts'
+
 </script>
 
 <script setup lang="ts">
@@ -307,6 +309,23 @@ function onToggleSelection(sid: Session['id']) {
   batchSelection.selectedSids = next
 }
 
+/**
+ * 删除会话
+ * @param sid 会话 ID
+ */
+async function onDeleteSession(sid: Session['id']) {
+  const target = chatStore.sessions.find(_ => _.id === sid)
+  const ok = await deleteSessionApi(sid, target?.profile)
+  if (!ok) {
+    window.$message?.error('删除失败')
+    return false
+  }
+  void chatStore.removeSession(sid)
+  window.$message?.success('会话已删除')
+  // 从置顶列表中移除
+  sessionPrefsStore.removePinneds([sid])
+}
+
 
 /**
  * 处理配置文件过滤器变化
@@ -407,6 +426,7 @@ async function handleProfileFilterChange(value: string) {
             @switch-session="handleSwitchSession(session.id)"
             @contextmenu="onSessionContextmenu($event, session.id)"
             @toggle-select="onToggleSelection(session.id)"
+            @delete="onDeleteSession(session.id)"
           />
         </template>
         <SessionListItem
@@ -421,6 +441,7 @@ async function handleProfileFilterChange(value: string) {
           @switch-session="handleSwitchSession(session.id)"
           @contextmenu="onSessionContextmenu($event, session.id)"
           @toggle-select="onToggleSelection(session.id)"
+          @delete="onDeleteSession(session.id)"
         />
       </div>
     </aside>

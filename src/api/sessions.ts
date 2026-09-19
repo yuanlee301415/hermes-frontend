@@ -162,3 +162,20 @@ export async function batchDeleteSessions(targets: Array<string | BatchDeleteSes
     throw err
   }
 }
+
+/**
+ * 删除会话
+ * @param id 会话 Id
+ * @param profile
+ */
+export async function deleteSessionApi(id: Session['id'], profile?: string | null): Promise<boolean> {
+  try {
+    const params = new URLSearchParams()
+    if (profile) params.set('profile', profile)
+    const query = params.toString()
+    await request(`api/hermes/sessions/${id}${query ? `?${query}` : ''}`, { method: 'DELETE' })
+    return true
+  } catch {
+    return false
+  }
+}

@@ -2890,6 +2890,22 @@ export const useChatStore = defineStore('chatStore', () => {
   }
 
 
+  /**
+   * 删除会话
+   * - 如果删除的是当前活跃会话，自动切换到第一个会话或创建新会话
+   * @param sid 会话 ID
+   */
+  async function removeSession(sid: Session['id']) {
+    sessions.value = sessions.value.filter(_ => _.id !== sid)
+    if (activeSessionId.value !== sid) return
+    if (sessions.value.length) {
+      await switchSession(sessions.value[0].id)
+    } else {
+      const session = createSession()
+      await switchSession(session.id)
+    }
+  }
+
   return {
     sessions,
     sessionsLoaded,
@@ -2918,6 +2934,7 @@ export const useChatStore = defineStore('chatStore', () => {
     refreshSessionListOnly,
     reloadActivatedSession,
     newChat,
-    isSessionLive
+    isSessionLive,
+    removeSession
   }
 })

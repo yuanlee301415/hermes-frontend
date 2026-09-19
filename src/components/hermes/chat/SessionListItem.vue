@@ -15,9 +15,7 @@ const props = defineProps<{
   selectable?: boolean
   selected?: boolean
   streaming?: boolean
-
 /*Todo:
-  canDelete: boolean
 
   showProfile?: boolean
 */
@@ -30,6 +28,8 @@ const emit = defineEmits<{
   (e: 'contextmenu', evt: MouseEvent): void
   // 批量选择》选择单个会话
   (e: 'toggle-select'): void
+  // 删除会话
+  (e: 'delete'): void
 }>()
 
 function handleClick(event: MouseEvent) {
@@ -79,7 +79,12 @@ function handleClick(event: MouseEvent) {
       </n-flex>
     </div>
 
-    <n-text v-if="!selectable" depth="2" class="session-item-delete">&times;</n-text>
+    <n-popconfirm v-if="!selectable" @positive-click="emit('delete')">
+      <template #trigger>
+        <n-text depth="2" class="session-item-delete" @click.stop>&times;</n-text>
+      </template>
+      确定删除此会话吗？
+    </n-popconfirm>
   </a>
 </template>
 
