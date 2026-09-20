@@ -1,24 +1,27 @@
 <!--
-会话标题列表
-Todo:
-- [ ] 其它组件属性
+会话列表项（@2026-07-30 21:41:44）
+- 会话》标题、Agent、模型、创建时间、Profile
+- 选择（切换会话）
+- 右键
+- 复选框（批量选择）
+- 删除按钮
 -->
 <script setup lang="ts">
 import type { Session } from '@/models/Session.ts'
 import { Pinned } from '@vicons/tabler'
 
-const props = defineProps<{
+defineProps<{
   session: Session
+  // 是否当前活跃会话
   active: boolean
+  // 是否置顶
   pinned: boolean
-  to?: string
+  // 批量选择状态
   selectable?: boolean
+  // 批量选择》是否勾选
   selected?: boolean
+  // 是否处于活跃状态
   streaming?: boolean
-/*Todo:
-
-  showProfile?: boolean
-*/
 }>()
 
 const emit = defineEmits<{
@@ -32,18 +35,13 @@ const emit = defineEmits<{
   (e: 'delete'): void
 }>()
 
-function handleClick(event: MouseEvent) {
-  if (props.to) event?.preventDefault()
-  emit('switch-session')
-}
-
 </script>
 
 <template>
   <a
     :class="{active}"
     class="session-item flex-row"
-    @click="handleClick"
+    @click="emit('switch-session')"
     @contextmenu="emit('contextmenu', $event)"
   >
     <div v-if="selectable" class="session-item-checkbox">
