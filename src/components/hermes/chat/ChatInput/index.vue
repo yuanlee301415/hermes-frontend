@@ -24,7 +24,7 @@ import { Attachment } from '@/models/Message.ts'
 import { Session } from '@/models/Session.ts'
 import { formatTokens } from '@/utils/format.ts'
 import { getContextLengthApi } from '@/api/sessions.ts'
-import { type BridgeCommand, BRIDGE_COMMANDS} from '../../shared/bridge-commands.ts'
+import { type BridgeCommand, BRIDGE_COMMANDS} from '../shared/bridge-commands.ts'
 
 defineOptions({ name: 'ChatInput' })
 

@@ -16,9 +16,9 @@ import { parseThinking, countThinkingChars } from '@/utils/thinking-parser.ts'
 import { formatDurationMs, formatTime } from '@/utils/format.ts'
 import { copyToClipboard } from '@/utils/clipboard.ts'
 import { MESSAGE_ID_PREFIX } from '@/constants/hardcoded.ts'
-import { parseContentBlocks, getBlockText } from '../../shared/parse-message.ts'
-import { formatToolPayload, renderToolPayload } from '../../shared/parse-tool.ts'
-import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../../shared/highlight.ts'
+import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
+import { formatToolPayload, renderToolPayload } from '../shared/parse-tool.ts'
+import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../shared/highlight.ts'
 </script>
 
 <script setup lang="ts">

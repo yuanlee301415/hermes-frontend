@@ -12,10 +12,10 @@ import MarkdownIt from 'markdown-it'
 import MarkdownItConstructor from 'markdown-it'
 import mk from '@vscode/markdown-it-katex'
 import katex from 'katex'
-import { isLatexFence, renderLatexFence } from '@/components/hermes/shared/render-latex.ts'
-import { isMermaidFence, renderMermaidPlaceholder } from '@/components/hermes/shared/mermaidRenderer.ts'
 import { MARKDOWN_HEADING_ID_PREFIX } from '@/constants/hardcoded.ts'
-import { renderHighlightedCodeBlock, handleCodeBlockCopyClick } from '../../shared/highlight.ts'
+import { isLatexFence, renderLatexFence } from '../shared/render-latex.ts'
+import { isMermaidFence, renderMermaidPlaceholder } from '../shared/mermaidRenderer.ts'
+import { renderHighlightedCodeBlock, handleCodeBlockCopyClick } from '../shared/highlight.ts'
 
 // 支持的视频文件扩展名
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov'])
@@ -87,8 +87,8 @@ import {
   getMarkdownAudio,
   getMarkdownVideo,
   getMarkdownFile
-} from '../../shared/render-media.ts'
-import { repairNestedMarkdownFences } from '../../shared/markdownFenceRepair.ts'
+} from '../shared/render-media.ts'
+import { repairNestedMarkdownFences } from '../shared/markdownFenceRepair.ts'
 
 const props = withDefaults(defineProps<{
     content: string

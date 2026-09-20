@@ -3,7 +3,7 @@
  * 基于 highlight.js 实现代码语法高亮，支持 Unified Diff 格式的特殊渲染和代码复制功能
  */
 import hljs from 'highlight.js'
-import { copyToClipboard } from '@/utils/clipboard'
+import { copyToClipboard } from '@/utils/clipboard.ts'
 
 /**
  * 语言别名映射表
