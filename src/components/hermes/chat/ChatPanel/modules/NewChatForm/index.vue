@@ -5,7 +5,7 @@
 import { type AvailableModelGroup } from '@/api/system.ts'
 import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { Session } from '@/models/Session.ts'
-import { NewChatModel } from './index.ts'
+import { NewChatModel } from './NewChatModel.ts'
 
 const AGENT_OPTIONS = [
   { label: 'Hermes', value: Session.AGENT_TYPE.Hermes  },

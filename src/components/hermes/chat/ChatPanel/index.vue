@@ -1,5 +1,5 @@
 <!--
-对话
+对话（@2026-07-30 21:41:44）
 - 批量选择 & 删除
 - 新建对话
 - 配置文件过滤器
@@ -13,9 +13,7 @@
 - 输入框
 
 Todo:
-- [ ] DrawerPanel
-- [ ] 整理
-- [ ] 迁移 `/shard` 到 `/chat` 目录下
+- [x] DrawerPanel（暂缓）
 -->
 <script lang="ts">
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
@@ -24,10 +22,8 @@ import { Session } from '@/models/Session.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
 import { batchDeleteSessions } from '@/api/sessions.ts'
-import { sortSessionsWithActiveFirst } from './index.ts'
-import { NewChatModel } from './modules/NewChatForm/index.ts'
 import { deleteSessionApi } from '@/api/sessions.ts'
-
+import { NewChatModel } from './modules/NewChatForm/NewChatModel.ts'
 </script>
 
 <script setup lang="ts">
@@ -51,13 +47,17 @@ const chatStore = useChatStore()
 const profileStore = useProfilesStore()
 const appStore = useAppStore()
 const sessionPrefsStore = useSessionPrefsStore()
-const profileFilterValue = ref('')
+
+
+/*
+* ========================================
+* 会话列表
+* ========================================
+* */
+
 const showSessions = ref(true)
 const outlineVisible = ref(false)
 
-/*
-* ==================== 会话列表 ====================
-* */
 // 已置顶的会话列表（按更新时间排序）
 const pinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.sessions.filter(sess => sessionPrefsStore.isPinned(sess.id))))
 
@@ -66,8 +66,11 @@ const unpinnedSessions = computed(() => sortSessionsWithActiveFirst(chatStore.se
 
 
 /*
-* ==================== 新建对话 ====================
+* ========================================
+* 新建对话
+* ========================================
 * */
+
 const newChatVisible = ref(false)
 const newChatLoading = ref(true)
 const newChatModel = reactive<NewChatModel>({} as NewChatModel)
@@ -84,14 +87,10 @@ const canConfirmNewChat = computed(() => {
   return true
 })
 
-/*
-* ==================== 会话列表右键 ====================
-* */
+// 会话列表右键
 const sessionContextmenuRef = useTemplateRef<InstanceType<typeof SessionContextmenu>>('sessionContextmenuRef')
 
-/*
-* ==================== 批量选择 ====================
-* */
+// 批量选择
 const batchSelection = reactive({
   // 启用
   enable: false,
@@ -103,9 +102,7 @@ const batchSelection = reactive({
   isDeleting: false
 })
 
-/*
-* ==================== 配置文件过滤器 ====================
-* */
+// 配置文件过滤器
 const profileOptions = computed(() => [
     { label: '全部配置', value: ''},
     ...profileStore.profiles.map(_ => ({
@@ -123,8 +120,11 @@ watch(() => [chatStore.sessionsLoaded, ...chatStore.sessions.map(_ => _.id)], (v
   sessionPrefsStore.pruneMissingSessions(sids)
 }, { immediate: true })
 
+
 /*
-* ==================== 会话列表 ====================
+* ========================================
+* 会话列表
+* ========================================
 * */
 
 /**
@@ -141,8 +141,54 @@ async function handleSwitchSession(sessionId: string) {
   })
 }
 
+/**
+ * 删除会话
+ * @param sid 会话 ID
+ */
+async function onDeleteSession(sid: Session['id']) {
+  const target = chatStore.sessions.find(_ => _.id === sid)
+  const ok = await deleteSessionApi(sid, target?.profile)
+  if (!ok) {
+    window.$message?.error('删除失败')
+    return false
+  }
+  void chatStore.removeSession(sid)
+  window.$message?.success('会话已删除')
+  // 从置顶列表中移除
+  sessionPrefsStore.removePinneds([sid])
+}
+
+/**
+ * 处理配置文件过滤器变化
+ * @param value 选中的配置文件值
+ */
+async function handleProfileFilterChange(value: string) {
+  chatStore.sessionProfileFilter = value
+  await chatStore.loadSessions(chatStore.sessionProfileFilter)
+}
+
+/**
+ * 打开右键菜单
+ * @param evt
+ * @param sid
+ */
+function onSessionContextmenu(evt: MouseEvent, sid: Session['id']) {
+  sessionContextmenuRef.value?.openContextmenu(evt, sid)
+}
+
+/**
+ * 导航到 Markdown 中的标题
+ * @param targetId DOM `id`
+ */
+function handleNavigate(targetId: string) {
+  document.querySelector('#' + targetId)?.scrollIntoView(true)
+}
+
+
 /*
-* ==================== 新建对话 ====================
+* ========================================
+* 新建对话
+* ========================================
 * */
 
 // 打开“新建对话”弹窗
@@ -223,30 +269,6 @@ async function handleConfirmNewChat() {
   newChatVisible.value = false
 }
 
-/*
-* ==================== 会话大纲 ====================
-* */
-
-/**
- * 导航到 Markdown 中的标题
- * @param targetId DOM `id`
- */
-function handleNavigate(targetId: string) {
-  document.querySelector('#' + targetId)?.scrollIntoView(true)
-}
-
-/*
-* ==================== 会话列表右键 ====================
-* */
-
-/**
- * 打开右键菜单
- * @param evt
- * @param sid
- */
-function onSessionContextmenu(evt: MouseEvent, sid: Session['id']) {
-  sessionContextmenuRef.value?.openContextmenu(evt, sid)
-}
 
 /*
 * ==================== 批量选择 ====================
@@ -322,31 +344,20 @@ function onToggleSelection(sid: Session['id']) {
   batchSelection.selectedSids = next
 }
 
-/**
- * 删除会话
- * @param sid 会话 ID
- */
-async function onDeleteSession(sid: Session['id']) {
-  const target = chatStore.sessions.find(_ => _.id === sid)
-  const ok = await deleteSessionApi(sid, target?.profile)
-  if (!ok) {
-    window.$message?.error('删除失败')
-    return false
-  }
-  void chatStore.removeSession(sid)
-  window.$message?.success('会话已删除')
-  // 从置顶列表中移除
-  sessionPrefsStore.removePinneds([sid])
-}
 
+/*
+* ========================================
+* 工具方法
+* ========================================
+* */
 
 /**
- * 处理配置文件过滤器变化
- * @param value 选中的配置文件值
+ * 将会话按更新时间降序排序（最新的在前）
+ * @param items 会话数组
+ * @returns 排序后的会话数组
  */
-async function handleProfileFilterChange(value: string) {
-  chatStore.sessionProfileFilter = value
-  await chatStore.loadSessions(chatStore.sessionProfileFilter)
+function sortSessionsWithActiveFirst(items: Session[]): Session[] {
+  return [...items].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
 }
 </script>
 
@@ -418,7 +429,7 @@ async function handleProfileFilterChange(value: string) {
       </div>
 
       <div class="session-profile">
-        <n-select v-model:value="profileFilterValue" :options="profileOptions" size="small" :loading="profileStore.loading" @update:value="handleProfileFilterChange" />
+        <n-select :default-value="profileOptions[0].value" :options="profileOptions" size="small" :loading="profileStore.loading" @update:value="handleProfileFilterChange" />
       </div>
 
       <div v-if="showSessions" class="session-items flex-1">
