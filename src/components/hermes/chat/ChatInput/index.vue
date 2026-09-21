@@ -10,7 +10,6 @@
 
 Todo:
 - [ ] 草稿
-- [ ] 编辑上下文长度
 -->
 <script lang="ts">
 import { type BridgeCommand, BRIDGE_COMMANDS} from '../shared/bridge-commands.ts'
@@ -18,7 +17,20 @@ import { Attachment } from '@/models/Message.ts'
 import { Session } from '@/models/Session.ts'
 import { formatTokens } from '@/utils/format.ts'
 import { getContextLengthApi } from '@/api/sessions.ts'
+import { setModelContext } from '@/api/model-context.ts'
 import { REASONING_EFFORT_OPTIONS } from './index.ts'
+
+// 上下文长度的默认回退值
+const FALLBACK_CONTEXT = 256_000
+
+// 已加载的上下文长度的缓存键（用于避免重复请求）
+let contextLengthLoadedKey = ''
+
+// 当前正在请求的上下文长度的键
+let contextLengthRequestKey = ''
+
+// 上下文长度请求的 Promise（用于去重）
+let contextLengthRequest: Promise<void> | null = null
 </script>
 
 <script setup lang="ts">
@@ -29,6 +41,7 @@ import { useChatStore } from '@/store/modules/chat.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { useAppStore } from '@/store/modules/app.ts'
 import { useToolTraceVisibility } from '@/composables/useToolTraceVisibility.ts'
+import EditContextLimit from './modules/EditContextLimit.vue'
 
 defineOptions({ name: 'ChatInput' })
 
@@ -46,21 +59,14 @@ const { toolTraceVisible, toggleToolTraceVisible } = useToolTraceVisibility()
  */
 const canSend = computed(() => inputText.value.trim() || attachments.value.length > 0)
 
-// ============ 上下文使用统计 ============
-// 上下文长度的默认回退值
-const FALLBACK_CONTEXT = 256_000
+/*
+* ========================
+* 上下文使用统计
+* ========================
+* */
 
 // 当前模型的上下文窗口长度（token 数）
 const contextLength = ref(FALLBACK_CONTEXT)
-
-// 已加载的上下文长度的缓存键（用于避免重复请求）
-let contextLengthLoadedKey = ''
-
-// 当前正在请求的上下文长度的键
-let contextLengthRequestKey = ''
-
-// 上下文长度请求的 Promise（用于去重）
-let contextLengthRequest: Promise<void> | null = null
 
 // 是否为编码代理会话（编码代理会话不支持上下文编辑）
 const isCodingAgentSession = computed(() => chatStore.activeSession?.source === Session.SOURCE.CodingAgent)
@@ -83,6 +89,7 @@ const remainingTokens = computed(() => Math.max(0, contextLength.value - totalTo
 
 // 上下文使用率百分比
 const usagePercent = computed(() => Math.min((totalTokens.value / contextLength.value) * 100, 100))
+
 
 // ============ Slash 命令 ============
 
@@ -119,6 +126,17 @@ const reasoningEffortLabel = computed(() => {
   const v = currentReasoningEffort.value
   if (!v) return '默认'
   return REASONING_EFFORT_OPTIONS.find(_ => _.value === v)?.label || v
+})
+
+
+/* ========================================
+* 编辑上下文长度
+* ========================================
+* */
+const editingContextLimit = reactive({
+  value: FALLBACK_CONTEXT,
+  visible: false,
+  saving: false
 })
 
 
@@ -362,10 +380,45 @@ function handleEffortChange(value: string) {
   if (!sid) return
   chatStore.setSessionReasoningEffort(sid, value || '')
 }
+
+// 打开：编辑上下文长度 弹窗
+function handleEditContextLimit() {
+  editingContextLimit.value = contextLength.value
+  editingContextLimit.visible = true
+}
+
+// 保存上下文长度
+async function handleSaveContextLimit() {
+  if (!editingContextLimit.value || editingContextLimit.value <= 0) {
+    window.$message?.warning('请输入有效的上下文长度')
+    return false
+  }
+
+  try {
+    const provider = chatStore.activeSession?.provider || appStore.selectedProvider || ''
+    const model = chatStore.activeSession?.model || appStore.selectedModel || ''
+    if (!provider || !model) {
+      throw `provider or model 不存在`
+    }
+
+    editingContextLimit.saving = true
+    await setModelContext(provider, model, editingContextLimit.value)
+    contextLength.value = editingContextLimit.value
+    contextLengthLoadedKey = currentContextLengthKey()
+    editingContextLimit.visible = false
+    window.$message?.success('上下文长度已更新')
+  } catch (e) {
+    console.error(e)
+    window.$message?.error('更新失败')
+  } finally {
+    editingContextLimit.saving = false
+  }
+}
 </script>
 
 <template>
   <div class="chat-input-area">
+    <!--Top bar-->
     <n-flex class="input-top-bar" align="center" :size="8">
       <n-popselect
         v-if="!isCodingAgentSession"
@@ -395,8 +448,17 @@ function handleEffortChange(value: string) {
 
       <template v-if="totalTokens > 0">
         <div class="context-info">
-          <!--Todo: 编辑上下文长度-->
-          {{ formatTokens(totalTokens) }} / {{ formatTokens(contextLength) }} · 剩余 {{ formatTokens(remainingTokens) }}
+          {{ formatTokens(totalTokens) }} /
+          <template v-if="isCodingAgentSession">
+            {{ formatTokens(contextLength) }}
+          </template>
+          <n-tooltip v-else>
+            <template #trigger>
+              <span class="context-limit-editable" @click="handleEditContextLimit">{{ formatTokens(contextLength) }}</span>
+            </template>
+            点击编辑上下文长度
+          </n-tooltip>
+          · 剩余 {{ formatTokens(remainingTokens) }}
         </div>
 
         <div class="context-bar">
@@ -404,6 +466,7 @@ function handleEffortChange(value: string) {
         </div>
       </template>
     </n-flex>
+    <!--Top bar End-->
 
     <div class="input-wrapper">
       <!--Textarea-->
@@ -453,6 +516,20 @@ function handleEffortChange(value: string) {
     </div>
 
 
+    <!--编辑上下文长度-->
+    <n-modal
+      v-model:show="editingContextLimit.visible"
+      :positive-button-props="{loading: editingContextLimit.saving}"
+      title="编辑上下文长度"
+      preset="dialog"
+      style="width: min(450px, 50vw)"
+      negative-text="取消"
+      positive-text="保存"
+      @positive-click="handleSaveContextLimit"
+    >
+      <EditContextLimit v-model:limit="editingContextLimit.value" :loading="editingContextLimit.saving"/>
+    </n-modal>
+    <!--编辑上下文长度 End-->
   </div>
 </template>
 
@@ -485,6 +562,16 @@ function handleEffortChange(value: string) {
     .context-info {
       font-size: 11px;
       color: var(--text-muted);
+      .context-limit-editable {
+        cursor: pointer;
+        border-bottom: 1px dashed transparent;
+        transition: all 0.2s ease;
+        &:hover {
+          border-bottom-color: var(--text-muted);
+          background-color: rgba(128, 128, 128, 0.1);
+          border-radius: 2px;
+        }
+      }
     }
     .context-bar {
       width: 60px;
