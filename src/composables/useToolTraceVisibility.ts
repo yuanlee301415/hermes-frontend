@@ -1,13 +1,17 @@
 /*
 * 工具追踪可见性
 * */
-const STORAGE_KEY = 'hermes_show_tool_calls'
+
+import { ref } from 'vue'
+import { TOOL_VISIBLE_KEY } from '@/constants/storage-keys.ts'
+
 const toolTraceVisible = ref(readInitialValue())
 
-function readInitialValue(): boolean {
+function readInitialValue() {
   try {
-    return localStorage.getItem(STORAGE_KEY) !== 'false'
-  } catch {
+    return localStorage.getItem(TOOL_VISIBLE_KEY) !== 'false'
+  } catch (e) {
+    console.error(e)
     return true
   }
 }
@@ -15,9 +19,9 @@ function readInitialValue(): boolean {
 function setToolTraceVisible(value: boolean) {
   toolTraceVisible.value = value
   try {
-    localStorage.setItem(STORAGE_KEY, String(value))
-  } catch {
-
+    localStorage.setItem(TOOL_VISIBLE_KEY, String(value))
+  } catch (e) {
+    console.error(e)
   }
 }
 

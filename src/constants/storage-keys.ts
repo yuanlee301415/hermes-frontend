@@ -17,3 +17,6 @@ export const REASONING_LS_PREFIX = 'hermes:reasoning_effort:'
 
 // 会话置顶
 export const PIN_KEY_PREFIX = 'hermes_session_pins_v1_'
+
+// 工具调用可见性
+export const TOOL_VISIBLE_KEY = 'hermes_tool_visible'

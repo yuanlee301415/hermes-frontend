@@ -11,20 +11,24 @@
 Todo:
 - [ ] 推理强度
 - [ ] 草稿
-- [ ] 显示/隐藏工具调用
 - [ ] 编辑上下文长度
 -->
-<script setup lang="ts">
-import {NInput} from 'naive-ui'
-import { Send } from '@vicons/tabler'
-import { useChatStore } from '@/store/modules/chat.ts'
-import { useProfilesStore } from '@/store/modules/profiles.ts'
-import { useAppStore } from '@/store/modules/app.ts'
+<script lang="ts">
+import { type BridgeCommand, BRIDGE_COMMANDS} from '../shared/bridge-commands.ts'
 import { Attachment } from '@/models/Message.ts'
 import { Session } from '@/models/Session.ts'
 import { formatTokens } from '@/utils/format.ts'
 import { getContextLengthApi } from '@/api/sessions.ts'
-import { type BridgeCommand, BRIDGE_COMMANDS} from '../shared/bridge-commands.ts'
+</script>
+
+<script setup lang="ts">
+import {NInput} from 'naive-ui'
+import { Send } from '@vicons/tabler'
+import { BuildOutline } from '@vicons/ionicons5'
+import { useChatStore } from '@/store/modules/chat.ts'
+import { useProfilesStore } from '@/store/modules/profiles.ts'
+import { useAppStore } from '@/store/modules/app.ts'
+import { useToolTraceVisibility } from '@/composables/useToolTraceVisibility.ts'
 
 defineOptions({ name: 'ChatInput' })
 
@@ -34,6 +38,7 @@ const appStore = useAppStore()
 const inputText = ref('')
 const inputRef = ref<InstanceType<typeof NInput> |null>(null)
 const attachments = ref<Attachment[]>([])
+const { toolTraceVisible, toggleToolTraceVisible } = useToolTraceVisibility()
 
 /**
  * 是否可以发送消息
@@ -339,7 +344,15 @@ function handeSend() {
   <div class="chat-input-area">
     <n-flex class="input-top-bar" align="center" :size="8">
       <!--Todo: 推理强度-->
-      <!--Todo: 显示/隐藏工具调用-->
+
+      <n-tooltip>
+        <template #trigger>
+          <n-button text size="small" class="tool-trace-toggle" :class="{active: toolTraceVisible}" @click="toggleToolTraceVisible()">
+            <n-icon><BuildOutline/></n-icon>
+          </n-button>
+        </template>
+        {{ toolTraceVisible ? '隐藏工具调用' : '显示工具调用' }}
+      </n-tooltip>
 
       <template v-if="totalTokens > 0">
         <div class="context-info">
@@ -415,7 +428,20 @@ function handeSend() {
   }
 
   .input-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     height: 30px;
+    .tool-trace-toggle {
+      opacity: 0.8;
+      &.active {
+        opacity: 1;
+      }
+    }
+    .context-info {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
     .context-bar {
       width: 60px;
     }
