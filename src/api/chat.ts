@@ -226,7 +226,7 @@ export interface StartRunRequest {
   /** API 模式（下划线命名） */
   api_mode?: 'chat_completions' | 'codex_responses' | 'anthropic_messages'
   /**
-   * 每会话推理努力级别覆盖
+   * 每会话推理强度级别覆盖
    * 为空或未定义时使用 config.yaml 中的默认值
    */
   reasoning_effort?: string

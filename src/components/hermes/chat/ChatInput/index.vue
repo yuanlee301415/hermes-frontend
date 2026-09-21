@@ -9,7 +9,6 @@
 - 语音输入（暂缓）
 
 Todo:
-- [ ] 推理强度
 - [ ] 草稿
 - [ ] 编辑上下文长度
 -->
@@ -19,6 +18,7 @@ import { Attachment } from '@/models/Message.ts'
 import { Session } from '@/models/Session.ts'
 import { formatTokens } from '@/utils/format.ts'
 import { getContextLengthApi } from '@/api/sessions.ts'
+import { REASONING_EFFORT_OPTIONS } from './index.ts'
 </script>
 
 <script setup lang="ts">
@@ -105,6 +105,21 @@ const filteredBridgeCommands = computed(() => {
 
 // 是否为 Bridge（CLI）会话
 const isBridgeSession = computed(() => chatStore.activeSession?.source === Session.SOURCE.Cli)
+
+/* ========================================
+* 推理强度级别
+* ========================================
+* */
+
+// 当前会话的推理强度级别
+const currentReasoningEffort = computed(() => chatStore.activeSession?.reasoningEffort || '')
+
+// 推理强度 Label
+const reasoningEffortLabel = computed(() => {
+  const v = currentReasoningEffort.value
+  if (!v) return '默认'
+  return REASONING_EFFORT_OPTIONS.find(_ => _.value === v)?.label || v
+})
 
 
 // ============ Watch ============
@@ -338,12 +353,36 @@ function handeSend() {
   slashActive.value = false
 }
 
+/**
+ * 推理强度处理函数
+ * @param value
+ */
+function handleEffortChange(value: string) {
+  const sid = chatStore.activeSessionId
+  if (!sid) return
+  chatStore.setSessionReasoningEffort(sid, value || '')
+}
 </script>
 
 <template>
   <div class="chat-input-area">
     <n-flex class="input-top-bar" align="center" :size="8">
-      <!--Todo: 推理强度-->
+      <n-popselect
+        v-if="!isCodingAgentSession"
+        :value="currentReasoningEffort"
+        :options="REASONING_EFFORT_OPTIONS"
+        trigger="click"
+        @update:value="handleEffortChange"
+      >
+        <n-tooltip trigger="hover">
+          <template #trigger>
+            <n-button text size="small" class="reasoning-effort-button" :class="{active: !!currentReasoningEffort}">
+              <n-icon>  <SvgIcon icon="effort"/></n-icon>
+            </n-button>
+          </template>
+          推荐强度：{{ reasoningEffortLabel }}
+        </n-tooltip>
+      </n-popselect>
 
       <n-tooltip>
         <template #trigger>
@@ -432,6 +471,11 @@ function handeSend() {
     align-items: center;
     gap: 8px;
     height: 30px;
+    .reasoning-effort-button {
+      &.active {
+        color: #4caf50;
+      }
+    }
     .tool-trace-toggle {
       opacity: 0.8;
       &.active {

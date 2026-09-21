@@ -1261,7 +1261,7 @@ export const useChatStore = defineStore('chatStore', () => {
             }
             : {}
         ),
-        // 每会话推理努力覆盖。Coding Agent runner 目前不使用此设置，保持 payload 显式。
+        // 每会话推理强度覆盖。Coding Agent runner 目前不使用此设置，保持 payload 显式。
         reasoning_effort: sessionSource === Session.SOURCE.CodingAgent ? undefined : activeSession.value?.reasoningEffort
       }
 
@@ -2905,6 +2905,23 @@ export const useChatStore = defineStore('chatStore', () => {
       await switchSession(session.id)
     }
   }
+  
+  /**
+   * 设置会话的推理强度
+   * - 推理强度级别决定了 AI 的思考深度，持久化到 localStorage 以跨页面刷新保持
+   * @param sid 会话 ID
+   * @param effort 推理强度级别
+   */
+  function setSessionReasoningEffort(sid: Session['id'], effort: string) {
+    const sess = sessions.value.find(_ => _.id === sid)
+    if (!sess) return
+    sess.reasoningEffort = effort
+    if (effort) {
+      setItemBestEffort(REASONING_LS_PREFIX + sid, effort)
+    } else {
+      removeItem(REASONING_LS_PREFIX + sid)
+    }
+  }
 
   return {
     sessions,
@@ -2936,6 +2953,7 @@ export const useChatStore = defineStore('chatStore', () => {
     reloadActivatedSession,
     newChat,
     isSessionLive,
-    removeSession
+    removeSession,
+    setSessionReasoningEffort
   }
 })
