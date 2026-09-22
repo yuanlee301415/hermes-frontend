@@ -9,7 +9,7 @@
 - 语音输入（暂缓）
 
 Todo:
-- [ ] 草稿
+- [ ] 整理
 -->
 <script lang="ts">
 import { type BridgeCommand, BRIDGE_COMMANDS} from '../shared/bridge-commands.ts'
@@ -18,6 +18,8 @@ import { Session } from '@/models/Session.ts'
 import { formatTokens } from '@/utils/format.ts'
 import { getContextLengthApi } from '@/api/sessions.ts'
 import { setModelContext } from '@/api/model-context.ts'
+import { DRAFT_KEY } from '@/constants/storage-keys.ts'
+import { loadJson, saveJson, removeItem } from '@/utils/storage.ts'
 import { REASONING_EFFORT_OPTIONS } from './index.ts'
 
 // 上下文长度的默认回退值
@@ -140,7 +142,11 @@ const editingContextLimit = reactive({
 })
 
 
-// ============ Watch ============
+/*
+* ========================
+* Watch
+* ========================
+* */
 
 /**
  * 监听影响上下文长度的变化，重新加载上下文长度
@@ -160,10 +166,23 @@ watch(() => [
   { flush: 'post' }
 )
 
-// ============ Mounted ============
+watch(inputText, value => {
+  saveDraftForActiveSession(value)
+})
+
+watch(() => chatStore.activeSessionId, () => {
+  loadDraftForActiveSession()
+})
+
+/*
+* ========================
+* Life cycle
+* ========================
+* */
 
 onMounted(() => {
   document.addEventListener('mousedown', onDocumentMousedown)
+  loadDraftForActiveSession()
 })
 
 onUnmounted(() => {
@@ -367,6 +386,7 @@ function handeSend() {
   chatStore.sendMessage(text, attachments.value)
   // 清空输入框和附件列表
   inputText.value = ''
+  saveDraftForActiveSession('')
   attachments.value = []
   slashActive.value = false
 }
@@ -414,6 +434,45 @@ async function handleSaveContextLimit() {
     editingContextLimit.saving = false
   }
 }
+
+/* ========================================
+* 草稿
+* ========================================
+* */
+
+/**
+ * 保存当前输入框内容为草稿
+ * - 空内容时删除对应会话的草稿
+ */
+function saveDraftForActiveSession(value: string) {
+  const sid = chatStore.activeSessionId
+  if (!sid) return
+
+  const drafts = loadJson<Record<string, string>>(DRAFT_KEY, {})
+  if (value) {
+    drafts[sid] = value
+  } else {
+    delete drafts[sid]
+  }
+
+  if (Object.keys(drafts)) {
+    saveJson(DRAFT_KEY, drafts)
+  } else {
+    removeItem(DRAFT_KEY)
+  }
+}
+
+/**
+ * 加载当前活动会话的草稿内容到输入框
+ */
+function loadDraftForActiveSession() {
+  const sid = chatStore.activeSessionId
+  if (!sid) return
+
+  const draft = loadJson<Record<string, string>>(DRAFT_KEY, {})[sid]
+  inputText.value = draft || ''
+}
+
 </script>
 
 <template>

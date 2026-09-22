@@ -20,3 +20,6 @@ export const PIN_KEY_PREFIX = 'hermes_session_pins_v1_'
 
 // 工具调用可见性
 export const TOOL_VISIBLE_KEY = 'hermes_tool_visible'
+
+// 草稿
+export const DRAFT_KEY = 'hermes_chat_input_drafts_v1'
