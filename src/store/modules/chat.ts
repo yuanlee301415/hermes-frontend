@@ -31,7 +31,7 @@ import { ACTIVE_SESSION_KEY_PREFIX, REASONING_LS_PREFIX } from '@/constants/stor
 import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { hasRuntimeToolPayload, runtimeToolPayloadOrUndefined, mapHermesMessages, readRunMarker, getReplayRunMarker, resolveResumedAssistantState,
   errorMessageText, runtimeToolOutputHasError, normalizeQueuedUserMessages } from '../shared/chat.ts'
-import { getItemBestEffort, removeItem, setItemBestEffort, getStoredReasoningEffort } from '../shared/storage.ts'
+import { getItemBestEffort, removeItem, setItemBestEffort } from '../../utils/storage.ts'
 
 
 export const useChatStore = defineStore('chatStore', () => {
@@ -152,7 +152,7 @@ export const useChatStore = defineStore('chatStore', () => {
   watch(sessions, list => {
     for (const s of list) {
       if (s.reasoningEffort === undefined) {
-        const stored = getStoredReasoningEffort(REASONING_LS_PREFIX + s.id)
+        const stored = getItemBestEffort(REASONING_LS_PREFIX + s.id)
         if (stored) {
           s.reasoningEffort = stored
         }
@@ -2905,7 +2905,7 @@ export const useChatStore = defineStore('chatStore', () => {
       await switchSession(session.id)
     }
   }
-  
+
   /**
    * 设置会话的推理强度
    * - 推理强度级别决定了 AI 的思考深度，持久化到 localStorage 以跨页面刷新保持

@@ -4,7 +4,7 @@ import { defineStore } from 'pinia'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { PIN_KEY_PREFIX } from '@/constants/storage-keys.ts'
-import { loadJson, saveJson} from '@/store/shared/storage.ts'
+import { loadJson, saveJson} from '@/utils/storage.ts'
 import { sameIds } from '../shared/index.ts'
 
 function pinKeys(profileName: string) {

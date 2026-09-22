@@ -95,23 +95,12 @@ export function recoverStorageQuota(storageKey: string){
 }
 
 /**
- * 获取存储的推理强度
- */
-export function getStoredReasoningEffort(key: string) {
-  try {
-    return localStorage.getItem(key) ?? undefined
-  } catch {
-    return undefined
-  }
-}
-
-/**
  * 获取本地存储数据
  * @param key 存储 Key
  * @param fallback 缺省数据
  */
 export function loadJson<T>(key: string, fallback: T): T {
-  const raw = getStoredReasoningEffort(key)
+  const raw = getItemBestEffort(key)
   try {
     return raw ? JSON.parse(raw) as T : fallback
   } catch {
