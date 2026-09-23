@@ -1,5 +1,5 @@
 <!--
-对话（@2026-07-30 21:41:44）
+对话(@2026-09-20)
 - 批量选择 & 删除
 - 新建对话
 - 配置文件过滤器
@@ -13,7 +13,7 @@
 - 输入框
 
 Todo:
-- [x] DrawerPanel（暂缓）
+- [ ] DrawerPanel（暂缓）
 -->
 <script lang="ts">
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'

@@ -1,15 +1,22 @@
 <!--
-对话输入框（v1@2026年8月2日）
-- 发送消息
-- 停止输出
-- 上下文使用统计
-- 选择文件（暂缓）
-- 文件预览（暂缓）
-- 语音播放（暂缓）
-- 语音输入（暂缓）
+对话输入框（@2026-09-21）
+- 工具栏
+  - 推理强度
+  - 设置推理强度
+  - 显示/隐藏工具调用
+  - 上下文使用统计
+  - 编辑上下文长度
+- 输入区域
+  - 输入消息
+  - Slash 命令
+  - 发送消息
+  - 中止输出
 
 Todo:
-- [ ] 整理
+- [ ] 选择文件（暂缓）
+- [ ] 文件预览（暂缓）
+- [ ] 语音播放（暂缓）
+- [ ] 语音输入（暂缓）
 -->
 <script lang="ts">
 import { type BridgeCommand, BRIDGE_COMMANDS} from '../shared/bridge-commands.ts'
@@ -20,9 +27,19 @@ import { getContextLengthApi } from '@/api/sessions.ts'
 import { setModelContext } from '@/api/model-context.ts'
 import { DRAFT_KEY } from '@/constants/storage-keys.ts'
 import { loadJson, saveJson, removeItem } from '@/utils/storage.ts'
-import { REASONING_EFFORT_OPTIONS } from './index.ts'
 
-// 上下文长度的默认回退值
+// 推理强度级别配置
+const REASONING_EFFORT_OPTIONS = [
+  { label: '默认 (config.yaml)', value: '' },
+  { label: '无', value: 'none' },
+  { label: '极低', value: 'minimal' },
+  { label: '低', value: 'low' },
+  { label: '中', value: 'medium' },
+  { label: '高', value: 'high' },
+  { label: '强', value: 'xhigh' },
+]
+
+// 上下文长度的默认回退值（256K Tokens）
 const FALLBACK_CONTEXT = 256_000
 
 // 已加载的上下文长度的缓存键（用于避免重复请求）
@@ -36,7 +53,7 @@ let contextLengthRequest: Promise<void> | null = null
 </script>
 
 <script setup lang="ts">
-import {NInput} from 'naive-ui'
+import { NInput } from 'naive-ui'
 import { Send } from '@vicons/tabler'
 import { BuildOutline } from '@vicons/ionicons5'
 import { useChatStore } from '@/store/modules/chat.ts'
@@ -50,12 +67,19 @@ defineOptions({ name: 'ChatInput' })
 const chatStore = useChatStore()
 const profilesStore = useProfilesStore()
 const appStore = useAppStore()
+const { toolTraceVisible, toggleToolTraceVisible } = useToolTraceVisibility()
+
+/*
+* ========================
+* 输入消息
+* ========================
+* */
+
 const inputText = ref('')
 const inputRef = ref<InstanceType<typeof NInput> |null>(null)
 const attachments = ref<Attachment[]>([])
-const { toolTraceVisible, toggleToolTraceVisible } = useToolTraceVisibility()
 
-/**
+/*
  * 是否可以发送消息
  * - 输入框有非空白文本 或 有附件
  */
@@ -73,7 +97,7 @@ const contextLength = ref(FALLBACK_CONTEXT)
 // 是否为编码代理会话（编码代理会话不支持上下文编辑）
 const isCodingAgentSession = computed(() => chatStore.activeSession?.source === Session.SOURCE.CodingAgent)
 
-/**
+/*
  * 计算当前会话使用的总 token 数
  * - 优先使用 contextTokens，其次使用 inputTokens + outputTokens
  */
@@ -93,7 +117,11 @@ const remainingTokens = computed(() => Math.max(0, contextLength.value - totalTo
 const usagePercent = computed(() => Math.min((totalTokens.value / contextLength.value) * 100, 100))
 
 
-// ============ Slash 命令 ============
+/*
+* ========================
+* Slash 命令
+* ========================
+* */
 
 // Slash 命令下拉菜单是否激活
 const slashActive = ref(false)
@@ -114,6 +142,7 @@ const filteredBridgeCommands = computed(() => {
 
 // 是否为 Bridge（CLI）会话
 const isBridgeSession = computed(() => chatStore.activeSession?.source === Session.SOURCE.Cli)
+
 
 /* ========================================
 * 推理强度级别
@@ -143,12 +172,12 @@ const editingContextLimit = reactive({
 
 
 /*
-* ========================
+* ========================================
 * Watch
-* ========================
+* ========================================
 * */
 
-/**
+/*
  * 监听影响上下文长度的变化，重新加载上下文长度
  * - 监听的状态包括：profile、provider、model、session 信息
  */
@@ -181,19 +210,55 @@ watch(() => chatStore.activeSessionId, () => {
 * */
 
 onMounted(() => {
-  document.addEventListener('mousedown', onDocumentMousedown)
+  loadContextLength()
   loadDraftForActiveSession()
+  document.addEventListener('mousedown', onDocumentMousedown)
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', onDocumentMousedown)
 })
 
-// ============ Slash 命令 ============
+/*
+* ========================
+* 输入消息
+* ========================
+* */
+
+/**
+ * 处理输入事件
+ * - 更新 Slash 命令 状态
+ */
+function handleInput() {
+  updateSlashState()
+}
+
+/**
+ * 发送消息
+ * - 发起对话
+ * - 清空输入状态
+ */
+function handleSend() {
+  const text = inputText.value.trim()
+  if (!text && !attachments.value.length) return
+  chatStore.sendMessage(text, attachments.value)
+  inputText.value = ''
+  saveDraftForActiveSession('')
+  attachments.value = []
+  slashActive.value = false
+}
+
+
+/*
+* ========================
+* Slash 命令
+* ========================
+* */
 
 /**
  * 处理文档鼠标按下事件
  * - 点击下拉菜单外部时关闭命令下拉菜单
+ * @param evt 鼠标事件
  */
 function onDocumentMousedown(evt: MouseEvent) {
   if (!slashActive.value) return
@@ -234,9 +299,7 @@ function updateSlashState() {
   slashActive.value = !!filteredBridgeCommands.value.length
 }
 
-/**
- * 选择并插入 Slash 命令到输入框
- */
+// 选择并插入 Slash 命令到输入框
 function selectBridgeCommand(command: BridgeCommand) {
   // 使用 insertText（完整命令）或 name（命令名），后面加空格
   inputText.value = `/${command.insertText || command.name} `
@@ -253,9 +316,7 @@ function selectBridgeCommand(command: BridgeCommand) {
   })
 }
 
-/**
- * 将选中的 Slash 命令滚动到可视区域
- */
+// 将选中的 Slash 命令滚动到可视区域
 function scrollCommandIntoView() {
   nextTick(() => {
     if (!commandDropdownRef.value) return
@@ -268,51 +329,56 @@ function scrollCommandIntoView() {
  * 处理键盘按下事件
  * - Slash 命令导航
  * - Enter 发送消息
+ * @param evt 键盘事件
  */
 function handeKeydown(evt: KeyboardEvent) {
   if (slashActive.value && filteredBridgeCommands.value.length) {
     // Slash 命令下拉菜单激活时的键盘导航
     switch (evt.key) {
-      case 'ArrowDown':
+      case 'ArrowDown': {
         evt.preventDefault()
         slashActiveIndex.value = (slashActiveIndex.value + 1) % filteredBridgeCommands.value.length
         scrollCommandIntoView()
         return
+      }
 
-      case 'ArrowUp':
+      case 'ArrowUp': {
+
         evt.preventDefault()
         slashActiveIndex.value = (slashActiveIndex.value - 1 + filteredBridgeCommands.value.length) % filteredBridgeCommands.value.length
         scrollCommandIntoView()
         return
+      }
 
-      case 'Escape':
+      case 'Escape': {
         evt.preventDefault()
         slashActive.value = false
         return
+      }
 
       case 'Enter':
-      case 'Tab':
+      case 'Tab': {
         // Enter/Tab：选中当前命令
         evt.preventDefault()
         selectBridgeCommand(filteredBridgeCommands.value[slashActiveIndex.value])
         return
+      }
     }
   }
 
   // 非 Slash 命令模式下，Enter 键发送消息（Shift+Enter 换行）
   if (evt.key !== 'Enter' || evt.shiftKey) return
   evt.preventDefault()
-  handeSend()
+  handleSend()
 }
 
-/**
- * 处理输入事件
- */
-function handleInput() {
-  updateSlashState()
-}
 
-/**
+/* ========================================
+* 编辑上下文长度
+* ========================================
+* */
+
+/*
  * 加载上下文长度（带缓存和去重）
  * - 避免重复请求相同参数的上下文长度
  */
@@ -356,7 +422,7 @@ function loadContextLength() {
   return contextLengthRequest
 }
 
-/**
+/*
  * 生成上下文长度缓存键
  * - 格式：profile|provider|model
  */
@@ -365,9 +431,7 @@ function currentContextLengthKey() {
   return [params.profile || '', params.provider || '', params.model || ''].join('|')
 }
 
-/**
- * 获取当前上下文长度查询参数
- */
+// 获取当前上下文长度查询参数
 function currentContextLengthParams() {
   const activeSession = chatStore.activeSession
   return {
@@ -378,22 +442,8 @@ function currentContextLengthParams() {
 }
 
 /**
- * 发送消息
- */
-function handeSend() {
-  const text = inputText.value.trim()
-  if (!text && !attachments.value.length) return
-  chatStore.sendMessage(text, attachments.value)
-  // 清空输入框和附件列表
-  inputText.value = ''
-  saveDraftForActiveSession('')
-  attachments.value = []
-  slashActive.value = false
-}
-
-/**
  * 推理强度处理函数
- * @param value
+ * @param value 推理强度
  */
 function handleEffortChange(value: string) {
   const sid = chatStore.activeSessionId
@@ -443,6 +493,7 @@ async function handleSaveContextLimit() {
 /**
  * 保存当前输入框内容为草稿
  * - 空内容时删除对应会话的草稿
+ * @param value 草稿
  */
 function saveDraftForActiveSession(value: string) {
   const sid = chatStore.activeSessionId
@@ -462,9 +513,7 @@ function saveDraftForActiveSession(value: string) {
   }
 }
 
-/**
- * 加载当前活动会话的草稿内容到输入框
- */
+// 加载当前活动会话的草稿内容到输入框
 function loadDraftForActiveSession() {
   const sid = chatStore.activeSessionId
   if (!sid) return
@@ -479,6 +528,7 @@ function loadDraftForActiveSession() {
   <div class="chat-input-area">
     <!--Top bar-->
     <n-flex class="input-top-bar" align="center" :size="8">
+      <!--推理强度-->
       <n-popselect
         v-if="!isCodingAgentSession"
         :value="currentReasoningEffort"
@@ -492,7 +542,7 @@ function loadDraftForActiveSession() {
               <n-icon>  <SvgIcon icon="effort"/></n-icon>
             </n-button>
           </template>
-          推荐强度：{{ reasoningEffortLabel }}
+          推理强度：{{ reasoningEffortLabel }}
         </n-tooltip>
       </n-popselect>
 
@@ -504,7 +554,9 @@ function loadDraftForActiveSession() {
         </template>
         {{ toolTraceVisible ? '隐藏工具调用' : '显示工具调用' }}
       </n-tooltip>
+      <!--推理强度 End-->
 
+      <!--上下文使用统计-->
       <template v-if="totalTokens > 0">
         <div class="context-info">
           {{ formatTokens(totalTokens) }} /
@@ -524,6 +576,8 @@ function loadDraftForActiveSession() {
           <n-progress :percentage="usagePercent"  :show-indicator="false" :height="5" :status="usagePercent > 80 ? 'warning' : 'info'"></n-progress>
         </div>
       </template>
+      <!--上下文使用统计 End-->
+
     </n-flex>
     <!--Top bar End-->
 
@@ -545,7 +599,7 @@ function loadDraftForActiveSession() {
           <n-button v-if="chatStore.isStreaming" size="small" type="error" style="margin-right: 8px;" @click="chatStore.stopStreaming()">
             停止
           </n-button>
-          <n-button :disabled="!canSend" size="small" type="primary" @click="handeSend">
+          <n-button :disabled="!canSend" size="small" type="primary" @click="handleSend">
             <template #icon><Send/></template>
             发送
           </n-button>
@@ -571,9 +625,7 @@ function loadDraftForActiveSession() {
         </div>
       </transition>
       <!--Slash command End-->
-
     </div>
-
 
     <!--编辑上下文长度-->
     <n-modal
@@ -593,111 +645,5 @@ function loadDraftForActiveSession() {
 </template>
 
 <style scoped lang="less">
-.chat-input-area {
-  flex-shrink: 0;
-  padding: 10px 15px;
-  border-top: 1px solid var(--border-color);
-
-  :deep(.n-input--textarea) {
-    padding: 10px;
-  }
-
-  .input-top-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 30px;
-    .reasoning-effort-button {
-      &.active {
-        color: #4caf50;
-      }
-    }
-    .tool-trace-toggle {
-      opacity: 0.8;
-      &.active {
-        opacity: 1;
-      }
-    }
-    .context-info {
-      font-size: 11px;
-      color: var(--text-muted);
-      .context-limit-editable {
-        cursor: pointer;
-        border-bottom: 1px dashed transparent;
-        transition: all 0.2s ease;
-        &:hover {
-          border-bottom-color: var(--text-muted);
-          background-color: rgba(128, 128, 128, 0.1);
-          border-radius: 2px;
-        }
-      }
-    }
-    .context-bar {
-      width: 60px;
-    }
-  }
-
-  .input-wrapper {
-    position: relative;
-    .slash-command-dropdown {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: calc(100% + 8px);
-      max-height: 240px;
-      overflow-y: auto;
-      background-color: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
-      z-index: 20;
-      padding: 4px;
-      .slash-command-item {
-        display: grid;
-        grid-template-columns: auto auto 1fr;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        min-height: 36px;
-        &.active,
-        &:hover {
-          background: rgba(var(--accent-primary-rgb), 0.1);
-        }
-        .slash-command-name {
-          font-size: 13px;
-          font-family: var(--font-code);
-          color: var(--accent-primary);
-          white-space: nowrap;
-        }
-        .slash-command-args {
-          font-size: 12px;
-          font-family: var(--font-code);
-          color: var(--text-muted);
-          white-space: nowrap;
-        }
-        .slash-command-desc {
-          min-width: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          color: var(--text-secondary);
-          font-size: 12px;
-        }
-      }
-    }
-  }
-
-  .dropdown-fade-enter-active,
-  .dropdown-fade-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-  }
-
-  .dropdown-fade-enter-from,
-  .dropdown-fade-leave-to {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
+@import "style";
 </style>

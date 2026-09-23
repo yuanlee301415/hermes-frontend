@@ -1,0 +1,108 @@
+
+.chat-input-area {
+  flex-shrink: 0;
+  padding: 10px 15px;
+  border-top: 1px solid var(--border-color);
+
+  :deep(.n-input--textarea) {
+    padding: 10px;
+  }
+
+  .input-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    .reasoning-effort-button {
+      &.active {
+        color: #4caf50;
+      }
+    }
+    .tool-trace-toggle {
+      opacity: 0.8;
+      &.active {
+        opacity: 1;
+      }
+    }
+    .context-info {
+      font-size: 11px;
+      color: var(--text-muted);
+      .context-limit-editable {
+        cursor: pointer;
+        border-bottom: 1px dashed transparent;
+        transition: all 0.2s ease;
+        &:hover {
+          border-bottom-color: var(--text-muted);
+          background-color: rgba(128, 128, 128, 0.1);
+          border-radius: 2px;
+        }
+      }
+    }
+    .context-bar {
+      width: 60px;
+    }
+  }
+
+  .input-wrapper {
+    position: relative;
+    .slash-command-dropdown {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: calc(100% + 8px);
+      max-height: 240px;
+      overflow-y: auto;
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+      z-index: 20;
+      padding: 4px;
+      .slash-command-item {
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        min-height: 36px;
+        &.active,
+        &:hover {
+          background: rgba(var(--accent-primary-rgb), 0.1);
+        }
+        .slash-command-name {
+          font-size: 13px;
+          font-family: var(--font-code);
+          color: var(--accent-primary);
+          white-space: nowrap;
+        }
+        .slash-command-args {
+          font-size: 12px;
+          font-family: var(--font-code);
+          color: var(--text-muted);
+          white-space: nowrap;
+        }
+        .slash-command-desc {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: var(--text-secondary);
+          font-size: 12px;
+        }
+      }
+    }
+  }
+
+  .dropdown-fade-enter-active,
+  .dropdown-fade-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .dropdown-fade-enter-from,
+  .dropdown-fade-leave-to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
