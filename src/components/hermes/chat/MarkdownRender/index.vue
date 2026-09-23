@@ -1,17 +1,17 @@
 <!--
 Markdown 渲染
+
 Todo:
+- [ ] Mermaid 图表
 - [ ] 初始运行逻辑
 - [ ] 文件预览
 - [ ] 文件下载
-- [ ] Mermaid 图表
-- [ ] Bug: 数字公式横向滚动条
 -->
 <script lang="ts">
 import MarkdownIt from 'markdown-it'
 import MarkdownItConstructor from 'markdown-it'
-import mk from '@vscode/markdown-it-katex'
 import katex from 'katex'
+import mk from '@vscode/markdown-it-katex'
 import { MARKDOWN_HEADING_ID_PREFIX } from '@/constants/hardcoded.ts'
 import { isLatexFence, renderLatexFence } from '../shared/render-latex.ts'
 import { isMermaidFence, renderMermaidPlaceholder } from '../shared/mermaidRenderer.ts'
@@ -204,6 +204,7 @@ async function handleMarkdownClick(event: MouseEvent): Promise<void> {
 </template>
 
 <style lang="less">
+@import "katex/dist/katex.min.css";
 @import 'markdown-body';
 @import 'code-block';
 </style>
