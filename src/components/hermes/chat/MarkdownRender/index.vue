@@ -2,10 +2,9 @@
 Markdown 渲染
 
 Todo:
-- [ ] Mermaid 图表
 - [ ] 初始运行逻辑
-- [ ] 文件预览
-- [ ] 文件下载
+- [ ] 文件预览（暂缓）
+- [ ] 文件下载（暂缓）
 -->
 <script lang="ts">
 import MarkdownIt from 'markdown-it'
@@ -14,7 +13,10 @@ import katex from 'katex'
 import mk from '@vscode/markdown-it-katex'
 import { MARKDOWN_HEADING_ID_PREFIX } from '@/constants/hardcoded.ts'
 import { isLatexFence, renderLatexFence } from '../shared/render-latex.ts'
-import { isMermaidFence, renderMermaidPlaceholder } from '../shared/mermaidRenderer.ts'
+import {
+  MERMAID_PLACEHOLDER_ATTR, MERMAID_MAX_DIAGRAMS_PER_MESSAGE, MERMAID_MAX_SOURCE_LENGTH, MERMAID_RENDER_TIMEOUT_MS,
+  isMermaidFence, renderMermaidPlaceholder, renderMermaidFallback, decodeMermaidSource, withTimeout, getScrollParent, isNearScrollBottom, cleanupMermaidRenderArtifacts
+} from '../shared/mermaidRenderer.ts'
 import { renderHighlightedCodeBlock, handleCodeBlockCopyClick } from '../shared/highlight.ts'
 
 // 支持的视频文件扩展名
@@ -90,6 +92,12 @@ import {
 } from '../shared/render-media.ts'
 import { repairNestedMarkdownFences } from '../shared/markdownFenceRepair.ts'
 
+// 组件唯一 ID，用于 Mermaid 图表渲染时的 DOM 元素标识
+const COMPONENT_ID = `mermaid-diagram-${Math.random().toString(36).slice(2)}`
+
+// 渲染版本计数器，用于防止组件卸载后继续渲染
+let renderGeneration = 0
+
 const props = withDefaults(defineProps<{
     content: string
     // 标题 ID 前缀，用于区分不同消息的锚点
@@ -101,6 +109,8 @@ const props = withDefaults(defineProps<{
     mentionNames: () => []
   }
 )
+
+const markdownBodyRef = useTemplateRef<HTMLDivElement>('markdownBodyRef')
 
 /**
  * 核心计算属性：将 Markdown 内容渲染为 HTML
@@ -178,6 +188,142 @@ const renderedHtml = computed(() => {
 
   return html
 })
+
+
+/*
+* ========================================
+* Watch
+* ========================================
+* */
+watch(renderedHtml, () => {
+  void renderMermaidDiagrams()
+}, { flush: 'post' })
+
+/*
+* ========================================
+* Life cycle
+* ========================================
+* */
+onMounted(() => {
+  void renderMermaidDiagrams()
+})
+
+onBeforeUnmount(() => {
+  ++renderGeneration
+})
+
+/**
+ * 异步渲染 Mermaid 图表
+ * 渲染流程：
+ * 1. 获取当前渲染版本号，防止组件卸载后继续渲染
+ * 2. 等待 DOM 更新完成（nextTick）
+ * 3. 查找所有待渲染的 Mermaid 占位符
+ * 4. 限制单次渲染数量，超出部分回退为代码块
+ * 5. 动态导入 Mermaid 库（按需加载）
+ * 6. 逐个渲染图表，处理超时和错误
+ * 7. 保持滚动位置（如果用户正在底部）
+ */
+async function renderMermaidDiagrams(): Promise<void> {
+  // 递增渲染版本号，用于取消过时的渲染任务
+  const generation = ++renderGeneration
+  await nextTick()
+
+  const root = markdownBodyRef.value
+  // 检查：渲染版本过期 / 根元素不存在
+  if (generation !== renderGeneration || !root) return
+
+  // 查找所有待渲染的 Mermaid 占位符元素
+  const pendingDiagrams = Array.from(root.querySelectorAll<HTMLElement>(`[${MERMAID_PLACEHOLDER_ATTR.Pending}="true"]`))
+  if (!pendingDiagrams.length) return
+
+  // 限制单次渲染数量，防止过多图表导致性能问题
+  const diagramsToRender = pendingDiagrams.slice(0, MERMAID_MAX_DIAGRAMS_PER_MESSAGE)
+  const diagramsToFallback = pendingDiagrams.slice(MERMAID_MAX_DIAGRAMS_PER_MESSAGE)
+
+  // 超出限制的图表直接回退为代码块显示
+  for (const element of diagramsToFallback) {
+    renderMermaidFallback(element, decodeMermaidSource(element.getAttribute(MERMAID_PLACEHOLDER_ATTR.Source)))
+  }
+
+  // 构建渲染候选列表，解码 Mermaid 源代码
+  const renderCandidates = diagramsToRender.map(element => ({
+      element,
+      source: decodeMermaidSource(element.getAttribute(MERMAID_PLACEHOLDER_ATTR.Source))
+    }))
+
+  // 筛选有效图表（非空且不超过最大长度）
+  const validDiagrams = [] as typeof renderCandidates
+  for (const candidate of renderCandidates) {
+    if (generation !== renderGeneration || !root.contains(candidate.element)) return
+
+    // 源代码为空或过长时，回退为代码块
+    if (!candidate.source || candidate.source.length > MERMAID_MAX_SOURCE_LENGTH) {
+      renderMermaidFallback(candidate.element, candidate.source)
+      continue
+    }
+
+    validDiagrams.push(candidate)
+  }
+
+  if (!validDiagrams.length) return
+
+  let mermaid: typeof import('mermaid').default
+
+  try {
+    mermaid = (await withTimeout(import('mermaid'), MERMAID_RENDER_TIMEOUT_MS, 'Mermaid import')).default
+    if (generation !== renderGeneration) return
+
+    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })
+  } catch (e) {
+    console.error(e)
+    if (generation !== renderGeneration) return
+    for (const {element, source} of validDiagrams) {
+      if (root.contains(element)) {
+        renderMermaidFallback(element, source)
+      }
+    }
+    return
+  }
+
+  // 逐个渲染有效图表
+  for (const [index, { element, source }] of validDiagrams.entries()) {
+    if (generation !== renderGeneration || !root.contains(element)) return
+
+    // 生成唯一的图表 ID
+    const id = `${COMPONENT_ID}-${generation}-${index}`
+
+    try {
+      // 渲染图表（带超时控制）
+      const result = await withTimeout(mermaid.render(id, source), MERMAID_RENDER_TIMEOUT_MS, 'Mermaid render')
+
+      // 清理 Mermaid 生成的临时 DOM 元素
+      cleanupMermaidRenderArtifacts(id)
+
+      if (generation !== renderGeneration || !root.contains(element)) return
+
+      // 记录滚动位置，渲染后保持用户在底部的状态
+      const scrollParent = getScrollParent(root)
+      const shouldKeepBottom = scrollParent ? isNearScrollBottom(scrollParent) : false
+
+      element.removeAttribute(MERMAID_PLACEHOLDER_ATTR.Pending)
+      element.removeAttribute(MERMAID_PLACEHOLDER_ATTR.Source)
+
+      // 替换为渲染后的 SVG
+      element.innerHTML = result.svg
+
+      // 如果用户原本在底部，滚动到新的底部
+      if (scrollParent && shouldKeepBottom) {
+        void nextTick(() => {
+          scrollParent.scrollTop = scrollParent.scrollHeight
+        })
+      }
+    } catch {
+      cleanupMermaidRenderArtifacts(id)
+      if (generation !== renderGeneration || !root.contains(element)) return
+      renderMermaidFallback(element, source)
+    }
+  }
+}
 
 /**
  * 处理 Markdown 内容的点击事件
