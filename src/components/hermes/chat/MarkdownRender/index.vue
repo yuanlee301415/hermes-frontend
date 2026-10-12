@@ -1,8 +1,16 @@
 <!--
-Markdown 渲染
+Markdown 渲染(@2026-10-12)
+- Markdown
+- 代码高亮
+- LaTeX 数学公式
+- Mermaid 图表
+- 标题添加 ID，支持锚点跳转
+- 将本地图片路径替换为下载 URL
+- 将本地文件链接转换为文件卡片或音视频播放器
+- 高亮 @提及用户名
+- 代码块复制
 
 Todo:
-- [ ] 初始运行逻辑
 - [ ] 文件预览（暂缓）
 - [ ] 文件下载（暂缓）
 -->
@@ -67,6 +75,7 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
     return defaultFenceRenderer(tokens, idx, options, env, self)
   }
 
+  // 最终回退：使用 token 默认渲染
   return self.renderToken(tokens, idx, options)
 }
 
@@ -195,6 +204,7 @@ const renderedHtml = computed(() => {
 * Watch
 * ========================================
 * */
+
 watch(renderedHtml, () => {
   void renderMermaidDiagrams()
 }, { flush: 'post' })
@@ -204,6 +214,7 @@ watch(renderedHtml, () => {
 * Life cycle
 * ========================================
 * */
+
 onMounted(() => {
   void renderMermaidDiagrams()
 })
