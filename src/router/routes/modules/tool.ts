@@ -34,6 +34,15 @@ const TOOL_ROUTE: AppRouteRecordRaw = {
         localIcon: 'menu-version-preview',
       },
     },
+    {
+      path: 'devices',
+      name: TOOL_ROUTE_NAME + '.Devices',
+      component: () => import('@/views/tool/DevicesView.vue'),
+      meta: {
+        title: '设备',
+        localIcon: 'menu-devices',
+      },
+    },
   ],
 }
 

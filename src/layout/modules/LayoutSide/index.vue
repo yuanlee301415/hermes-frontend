@@ -68,7 +68,8 @@ function renderMenuIcon(menu: MenuOption) {
         :indent="15"
         :collapsed="appStore.sidebarCollapsed"
         :collapsed-width="48"
-        :collapsed-icon-size="14"
+        :collapsed-icon-size="18"
+        :icon-size="18"
         :render-icon="renderMenuIcon"
         key-field="path"
         @update:value="handleRoute"
@@ -190,7 +191,7 @@ function renderMenuIcon(menu: MenuOption) {
     }
 
     .sidebar-collapse-btn {
-      margin: 8px auto;
+      margin: 1px auto 8px;
     }
   }
 

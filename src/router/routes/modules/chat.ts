@@ -63,7 +63,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
       path: 'api-relay',
       name: CHAT_ROOT_NAME + '.ApiRelay',
       meta: {
-        title: '中转站',
+        title: '饲料',
         localIcon: 'menu-api-relay',
       },
     },

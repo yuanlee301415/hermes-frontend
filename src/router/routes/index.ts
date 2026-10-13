@@ -1,6 +1,6 @@
 import { HOME_ROUTE, PAGE_NOT_FOUND_ROUTE, LOGIN_ROUTE } from '@/router/routes/basic'
 import CHAT_ROUTE from '@/router/routes/modules/chat.ts'
-import PROXY_ROUTE from '@/router/routes/modules/proxy.ts'
+import AGENT_ROUTE from '@/router/routes/modules/agent.ts'
 import MONITOR_ROUTE from '@/router/routes/modules/monitor.ts'
 import TOOL_ROUTE from '@/router/routes/modules/tool.ts'
 import SYSTEM_ROUTE from '@/router/routes/modules/system.ts'
@@ -12,7 +12,7 @@ export const basicRoutes = [
   LOGIN_ROUTE,
   HOME_ROUTE,
   CHAT_ROUTE,
-  PROXY_ROUTE,
+  AGENT_ROUTE,
   MONITOR_ROUTE,
   TOOL_ROUTE,
   SYSTEM_ROUTE,

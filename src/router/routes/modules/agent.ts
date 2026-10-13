@@ -5,19 +5,19 @@ import { LAYOUT } from '@/router/constant'
 const PROXY_ROUTE_NAME = 'Proxy'
 
 const PROXY_ROUTE: AppRouteRecordRaw = {
-  path: '/proxy',
+  path: '/agent',
   name: PROXY_ROUTE_NAME,
   component: LAYOUT,
-  redirect: '/proxy/jobs',
+  redirect: '/agent/jobs',
   meta: {
-    title: '代理',
+    title: '助手',
     localIcon: 'menu-models',
   },
   children: [
     {
       path: 'jobs',
       name: PROXY_ROUTE_NAME + '.Jobs',
-      component: () => import('@/views/proxy/JobsView.vue'),
+      component: () => import('@/views/agent/JobsView.vue'),
       meta: {
         title: '任务',
         localIcon: 'menu-jobs',
@@ -26,7 +26,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'kanban',
       name: PROXY_ROUTE_NAME + '.Kanban',
-      component: () => import('@/views/proxy/KanbanView.vue'),
+      component: () => import('@/views/agent/KanbanView.vue'),
       meta: {
         title: '看板',
         localIcon: 'menu-kanban',
@@ -35,7 +35,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'channels',
       name: PROXY_ROUTE_NAME + '.Channels',
-      component: () => import('@/views/proxy/ChannelsView.vue'),
+      component: () => import('@/views/agent/ChannelsView.vue'),
       meta: {
         title: '频道',
         localIcon: 'menu-channels',
@@ -44,7 +44,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'skills',
       name: PROXY_ROUTE_NAME + '.Skills',
-      component: () => import('@/views/proxy/SkillsView.vue'),
+      component: () => import('@/views/agent/SkillsView.vue'),
       meta: {
         title: '技能',
         localIcon: 'menu-skills',
@@ -53,7 +53,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'plugins',
       name: PROXY_ROUTE_NAME + '.Plugins',
-      component: () => import('@/views/proxy/PluginsView.vue'),
+      component: () => import('@/views/agent/PluginsView.vue'),
       meta: {
         title: '插件',
         localIcon: 'menu-plugins',
@@ -62,7 +62,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'mcp',
       name: PROXY_ROUTE_NAME + '.MCP',
-      component: () => import('@/views/proxy/McpView.vue'),
+      component: () => import('@/views/agent/McpView.vue'),
       meta: {
         title: 'MCP',
         localIcon: 'menu-mcp',
@@ -71,7 +71,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'memory',
       name: PROXY_ROUTE_NAME + '.Memory',
-      component: () => import('@/views/proxy/MemoryView.vue'),
+      component: () => import('@/views/agent/MemoryView.vue'),
       meta: {
         title: '记忆',
         localIcon: 'menu-memory',
@@ -80,7 +80,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'models',
       name: PROXY_ROUTE_NAME + '.Models',
-      component: () => import('@/views/proxy/ModelsView.vue'),
+      component: () => import('@/views/agent/ModelsView.vue'),
       meta: {
         title: '模型',
         localIcon: 'menu-models',

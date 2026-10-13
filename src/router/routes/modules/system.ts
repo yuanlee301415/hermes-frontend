@@ -10,8 +10,7 @@ const SYSTEM_ROUTE: AppRouteRecordRaw = {
   component: LAYOUT,
   redirect: '/system/profiles',
   meta: {
-    title: '系统',
-    localIcon: 'menu-settings',
+    title: '系统'
   },
   children: [
     {
