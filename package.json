@@ -15,6 +15,7 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@multiavatar/multiavatar": "^1.0.7",
     "@vicons/ionicons5": "^0.13.0",
     "@vicons/tabler": "^0.13.0",
     "@vscode/markdown-it-katex": "^1.1.2",

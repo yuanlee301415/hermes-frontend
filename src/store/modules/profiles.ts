@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
-import { Profile } from '@/models/Profile.ts'
+import { Profile, ProfileAvatar } from '@/models/Profile.ts'
 import { ACTIVE_PROFILE_NAME_KEY } from '@/constants/storage-keys.ts'
-import { getProfilesApi } from '@/api/profiles.ts'
+import { type HermesProfileDetail, getProfilesApi, updateProfileAvatarApi, deleteProfileAvatar } from '@/api/profiles.ts'
 
 export const useProfilesStore = defineStore('profilesStore', () => {
   const profiles = ref<Profile[]>([])
   const activeProfileName = ref<string | undefined>(localStorage.getItem(ACTIVE_PROFILE_NAME_KEY) ?? undefined)
   const activeProfile = ref<Profile | null>(null)
   const loading = ref(false)
+  const detailMap = ref<Record<string, HermesProfileDetail>>({})
 
+  // 获取用户配置列表
   async function fetchProfiles() {
     loading.value = true
     try {
@@ -41,11 +43,39 @@ export const useProfilesStore = defineStore('profilesStore', () => {
     }
   }
 
+  // 更新用户头像
+  async function updateAvatar(name: string, avatar: ProfileAvatar) {
+    const res = await updateProfileAvatarApi(name, avatar)
+    profiles.value = profiles.value.map(profile => profile.name === name ? {...profile, avatar: res} : profile)
+    if (detailMap.value[name]) {
+      detailMap.value[name] = { ...detailMap.value[name], avatar: res }
+    }
+    if (activeProfile.value?.name === name) {
+      activeProfile.value = { ...activeProfile.value, avatar: res }
+    }
+    return res
+  }
+
+  // 删除用户头像
+  async function deleteAvatar(name: string) {
+    await deleteProfileAvatar(name)
+    profiles.value = profiles.value.map(profile => profile.name === name ? {...profile, avatar: undefined} : profile)
+    if (detailMap.value[name]) {
+      detailMap.value[name] = { ...detailMap.value[name], avatar: undefined }
+    }
+    if (activeProfile.value?.name === name) {
+      activeProfile.value = { ...activeProfile.value, avatar: undefined }
+    }
+  }
+
   return {
-    fetchProfiles,
     profiles,
     activeProfile,
     activeProfileName,
-    loading
+    loading,
+
+    fetchProfiles,
+    updateAvatar,
+    deleteAvatar
   }
 })

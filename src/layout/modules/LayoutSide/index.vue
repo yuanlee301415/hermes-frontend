@@ -8,10 +8,10 @@ import { ChevronBack, ChevronForward, ChevronDownSharp, ExitOutline, LogoGithub,
 import { useRoutesStore } from '@/store/modules/routes.ts'
 import { router } from '@/router'
 import { useAppStore } from '@/store/modules/app.ts'
-import LanguageSwitch from '@/layout/modules/LanguageSwitch.vue'
 import { useSvgIcon } from '@/hooks/svgIcon.ts'
-import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { SESSION_ROUTE_NAME, CHAT_ROUTE_PATH } from '@/router/routes/modules/chat.ts'
+import LanguageSwitch from '../LanguageSwitch.vue'
+import ProfileSelector from '../ProfileSelector/index.vue'
 
 defineOptions({ name: 'LayoutSide' })
 
@@ -19,7 +19,6 @@ const TITLE = import.meta.env.VITE_APP_TITLE
 const route = useRoute()
 const routesStore = useRoutesStore()
 const appStore = useAppStore()
-const profilesStore = useProfilesStore()
 const { SvgIconVNode } = useSvgIcon()
 const selectedKey = ref(route.path)
 
@@ -77,13 +76,7 @@ function renderMenuIcon(menu: MenuOption) {
     </nav>
 
     <div class="sidebar-profile-selector">
-      <n-p v-show="!appStore.sidebarCollapsed">用户</n-p>
-      <n-button :bordered="!appStore.sidebarCollapsed" ghost strong class="w-full" style="justify-content: start">
-        <template #icon>
-          <SvgIcon icon="Profile" :size="24" />
-        </template>
-        <n-text v-show="!appStore.sidebarCollapsed">{{ profilesStore.activeProfileName }}</n-text>
-      </n-button>
+      <ProfileSelector/>
     </div>
 
     <div v-show="!appStore.sidebarCollapsed" class="sidebar-model-selector">

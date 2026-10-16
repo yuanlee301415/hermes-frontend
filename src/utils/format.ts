@@ -52,3 +52,15 @@ export function formatTokens(n: number): string {
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'
   return String(n)
 }
+
+/**
+ * 格式化文件大小
+ */
+export function formatSize(n: number): string {
+  if (!Number.isFinite(n)) return ''
+  if (n >= 1024 ** 3) return (n / 1024 ** 3).toFixed(1) + 'GB'
+  if (n >= 1024 ** 2) return (n / 1024 ** 2).toFixed(1) + 'MB'
+  if (n >= 1024) return (n / 1024).toFixed(1) + 'KB'
+  return n + 'B'
+}
+
