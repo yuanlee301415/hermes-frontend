@@ -13,7 +13,7 @@ const LIMIT_SIZE = 1024 ** 2 // 1MB
 <script setup lang="ts">
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { useAppStore } from '@/store/modules/app.ts'
-import { type ProfileRuntimeStatus, fetchProfileRuntimeStatusesWithMeta } from '@/api/profiles.ts'
+import { type ProfileRuntimeStatus, fetchProfileRuntimeStatusesWithMeta, restartProfileGateway, restartProfileRuntime } from '@/api/profiles.ts'
 import ProfileAvatarView from '../ProfileAvatar/index.vue'
 import type { Profile, ProfileAvatar } from '@/models/Profile.ts'
 import type {UploadCustomRequestOptions } from 'naive-ui'
@@ -28,10 +28,16 @@ const profileModal = reactive<{
   visible: boolean
   runtimeLoading: boolean
   runtimeStatuses: ProfileRuntimeStatus[]
+  gatewayRestarting: Record<Profile['name'], boolean>
+  profileRestarting: Record<Profile['name'], boolean>
+  profileSwitching: Record<Profile['name'], boolean>
 }>({
     visible: false,
     runtimeLoading: false,
-    runtimeStatuses: []
+    runtimeStatuses: [],
+    gatewayRestarting: {},
+    profileRestarting: {},
+    profileSwitching: {}
   }
 )
 
@@ -50,7 +56,7 @@ let runtimeRefreshToken = 0
 
 const displayName = computed(() => profilesStore.activeProfileName ?? '')
 const activeProfile = computed(() => profilesStore.profiles.find(_ => _.name === displayName.value))
-const statusByProfile = computed(() => new Map(profileModal.runtimeStatuses.map(status => [status.profile, status])))
+const statusByProfile = computed(() => new Map(profileModal.runtimeStatuses.map(_ => [_.profile, _])))
 
 onMounted(() => {
   !profilesStore.profiles.length && profilesStore.fetchProfiles()
@@ -172,6 +178,54 @@ async function handleResetAvatar() {
     avatarModal.saving = false
   }
 }
+
+// 重启网关
+async function handleRestartGateway(name: Profile['name']) {
+  profileModal.gatewayRestarting = { ...profileModal.gatewayRestarting, [name]: true }
+  try {
+    const gateway = await restartProfileGateway(name)
+    const current = statusByProfile.value.get(name)
+    if (current) {
+      profileModal.runtimeStatuses = profileModal.runtimeStatuses.map(_ => _.profile === name ? {..._, gateway } : _)
+    }
+    window.$message?.success(`网关已重启：${name}`)
+  } catch (e) {
+    console.error(e)
+    window.$message?.error( (e as Error).message || '重启网关失败')
+  } finally {
+    profileModal.gatewayRestarting = { ...profileModal.gatewayRestarting, [name]: false }
+  }
+}
+
+// 重置配置
+async function handleRestartProfile(name: Profile['name']) {
+  profileModal.profileRestarting = { ...profileModal.profileRestarting, [name]: true }
+  try {
+    const status = await restartProfileRuntime(name)
+    profileModal.runtimeStatuses = profileModal.runtimeStatuses.map(_ => _.profile === name ? status : _)
+    window.$message?.success(`配置已重启：${name}`)
+  } catch (e) {
+    console.error(e)
+    window.$message?.error((e as Error).message || '重启配置失败')
+  } finally {
+    profileModal.profileRestarting = { ...profileModal.profileRestarting, [name]: false }
+  }
+}
+
+// 切换前端配置
+async function handleSwitchProfile(name: Profile['name']) {
+  profileModal.profileSwitching = { ...profileModal.profileSwitching, [name]: true }
+  try {
+    const ok = await profilesStore.switchProfile(name)
+    if (!ok) throw new Error('切换 Profile 失败，网关可能需要手动重启')
+    window.$message?.success(`Profile 已切换为 ${name}，即将刷新页面！`)
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
+  } catch (e) {
+    window.$message?.error((e as Error).message || '切换 Profile 失败，网关可能需要手动重启')
+  }
+}
 </script>
 
 <template>
@@ -229,9 +283,25 @@ async function handleResetAvatar() {
             <template #action>
               <n-flex justify="end" :size="10">
                 <n-button type="primary" size="small" @click="handleOpenAvatarModal(profile)">头像</n-button>
-                <n-button type="primary" size="small">重启网关</n-button>
-                <n-button type="primary" size="small">重启配置</n-button>
-                <n-button type="primary" size="small" v-if="profile.name !== displayName">切换前端配置</n-button>
+                <n-button
+                  type="primary"
+                  size="small"
+                  :loading="profileModal.gatewayRestarting[profile.name]"
+                  @click="handleRestartGateway(profile.name)"
+                >重启网关</n-button>
+                <n-button
+                  type="primary"
+                  size="small"
+                  :loading="profileModal.profileRestarting[profile.name]"
+                  @click="handleRestartProfile(profile.name)"
+                >重启配置</n-button>
+                <n-button
+                  v-if="profile.name !== displayName"
+                  type="primary"
+                  size="small"
+                  :loading="profileModal.profileSwitching[profile.name]"
+                  @click="handleSwitchProfile(profile.name)"
+                >切换前端配置</n-button>
               </n-flex>
             </template>
           </n-thing>
