@@ -3,7 +3,7 @@ import { Profile, ProfileAvatar } from '@/models/Profile.ts'
 
 // 用户配置运行状态
 export interface ProfileRuntimeStatus {
-  profile: string
+  profile: Profile['name']
   bridge: {
     running: boolean
     profile: string
@@ -70,4 +70,35 @@ export async function updateProfileAvatarApi(name: Profile['name'], avatar: Prof
 // 删除用户头像
 export async function deleteProfileAvatar(name: Profile['name']): Promise<void> {
   await request(`api/hermes/profiles/${encodeURIComponent(name)}/avatar`, { method: 'DELETE' })
+}
+
+// 重启网关
+export async function restartProfileGateway(name: Profile['name']): Promise<ProfileRuntimeStatus['gateway']> {
+  const res = await request<{ success: boolean; gateway: ProfileRuntimeStatus['gateway'] }>(
+    `api/hermes/profiles/${encodeURIComponent(name)}/gateway/restart`,
+    { method: 'POST' },
+  )
+  return res.gateway
+}
+
+// 重启配置
+export async function restartProfileRuntime(name: Profile['name']): Promise<ProfileRuntimeStatus> {
+  const res = await request<{ success: boolean; status: ProfileRuntimeStatus }>(
+    `api/hermes/profiles/${encodeURIComponent(name)}/restart`,
+    { method: 'POST' },
+  )
+  return res.status
+}
+
+// 切换前端配置
+export async function switchHermesProfile(name: Profile['name']): Promise<boolean> {
+  try {
+    await request('api/hermes/profiles/active', {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    })
+    return true
+  } catch {
+    return false
+  }
 }
