@@ -16,6 +16,7 @@ import { parseThinking, countThinkingChars } from '@/utils/thinking-parser.ts'
 import { formatDurationMs, formatTime } from '@/utils/format.ts'
 import { copyToClipboard } from '@/utils/clipboard.ts'
 import { MESSAGE_ID_PREFIX } from '@/constants/hardcoded.ts'
+import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
 import { parseContentBlocks, getBlockText } from '../shared/parse-message.ts'
 import { formatToolPayload, renderToolPayload } from '../shared/parse-tool.ts'
 import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } from '../shared/highlight.ts'
@@ -24,7 +25,8 @@ import { copyTextToClipboard, handleCodeBlockCopyClick, COPY_CODE_ATTR_NAME } fr
 <script setup lang="ts">
 import { CopyOutline, BuildOutline } from '@vicons/ionicons5'
 import { ChevronRight, ChevronDown } from '@vicons/tabler'
-import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar.vue'
+import { useProfilesStore } from '@/store/modules/profiles.ts'
+import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar/index.vue'
 import { useChatStore } from '@/store/modules/chat.ts'
 import MarkdownRender from '../MarkdownRender/index.vue'
 
@@ -36,6 +38,7 @@ const TOOL_RESULT_PROPERTY_NAME: keyof Message = 'toolResult'
 const props = defineProps<{message: Message, highlight?: boolean, headingIdPrefix?: string}>()
 
 const chatStore = useChatStore()
+const profilesStore = useProfilesStore()
 
 // ==================== 内容块解析计算属性 ====================
 
@@ -177,6 +180,10 @@ const statusItems = computed(() => {
   ]
 })
 
+// ==================== 用户头像 ====================
+const assistantProfileName = computed(() => chatStore.activeSession?.profile || profilesStore.activeProfileName || DEFAULT_PROFILE_NAME);
+const assistantAvatar = computed(() => profilesStore.profiles.find(_ => _.name === assistantProfileName.value)?.avatar);
+
 /**
  * 处理工具详情区域的点击事件
  * 支持复制工具参数和工具结果，以及代码块的复制
@@ -289,7 +296,13 @@ async function handleCopyMessage() {
     <!-- ================================ >>>[消息（用户/助手/系统/命令）] ================================ -->
     <template v-else>
       <div class="msg-body">
-        <ProfileAvatar v-if="message.role === Message.ROLE.Assistant" class="msg-avatar"/>
+        <ProfileAvatar
+          v-if="message.role === Message.ROLE.Assistant"
+          :name="assistantProfileName"
+          :avatar="assistantAvatar"
+          :size="40"
+          class="msg-avatar"
+        />
 
         <div class="msg-content" :class="message.role">
           <!-- ============================ >>>[消息气泡] ============================ -->

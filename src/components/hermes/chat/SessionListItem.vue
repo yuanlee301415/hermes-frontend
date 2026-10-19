@@ -7,10 +7,15 @@
 - 删除按钮
 -->
 <script setup lang="ts">
-import type { Session } from '@/models/Session.ts'
 import { Pinned } from '@vicons/tabler'
+import { Session } from '@/models/Session.ts'
+import { DEFAULT_PROFILE_NAME } from '@/constants/hardcoded.ts'
+import { useProfilesStore } from '@/store/modules/profiles.ts'
+import ProfileAvatar from '@/components/hermes/profiles/ProfileAvatar/index.vue'
 
-defineProps<{
+const profilesStore = useProfilesStore()
+
+const props = defineProps<{
   session: Session
   // 是否当前活跃会话
   active: boolean
@@ -24,6 +29,18 @@ defineProps<{
   streaming?: boolean
 }>()
 
+const profileName = computed(() => props.session.profile || DEFAULT_PROFILE_NAME)
+const profileAvatar = computed(() => profilesStore.profiles.find(_ => _.name === profileName.value)?.avatar)
+const sessionAgentLogo = computed(() => {
+  if (props.session.source === Session.SOURCE.CodingAgent) {
+    if (props.session.codingAgentId === Session.CODING_AGENT_ID.Codex || props.session.agent === Session.AGENT_TYPE.Codex) {
+      return { label: 'Codex', src: '/coding-agents/codex-openai.png' }
+    }
+    return { label: 'Claude Code', src: '/coding-agents/claude-code.svg' }
+  }
+  return { label: 'Hermes', src: '/coding-agents/hermes.png' }
+})
+
 const emit = defineEmits<{
   // 切换会话
   (e: 'switch-session'): void
@@ -34,6 +51,7 @@ const emit = defineEmits<{
   // 删除会话
   (e: 'delete'): void
 }>()
+
 
 </script>
 
@@ -56,7 +74,7 @@ const emit = defineEmits<{
       </n-flex>
 
       <n-flex class="session-agent" align="center" :size="6">
-        <n-avatar src="/coding-agents/hermes.png" round :size="18" />
+        <img :src="sessionAgentLogo.src" :alt="sessionAgentLogo.label" />
         <n-text :title="session.agent" depth="3" class="flex-1 overflow-hidden">
           <n-ellipsis :tooltip="false">{{ session.agent }}</n-ellipsis>
         </n-text>
@@ -70,7 +88,7 @@ const emit = defineEmits<{
       </n-flex>
 
       <n-flex class="session-profile" align="center" :size="5">
-        <SvgIcon icon="Profile" />
+        <ProfileAvatar :name="profileName" :avatar="profileAvatar" :size="16"/>
         <n-text :title="session.profile" depth="3" class="flex-1 overflow-hidden">
           <n-ellipsis :tooltip="false">{{ session.profile }}</n-ellipsis>
         </n-text>
@@ -112,6 +130,15 @@ const emit = defineEmits<{
 
     .session-agent {
       margin-top: 4px;
+      img {
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+        padding: 2px;
+        border-radius: 50%;
+        object-fit: contain;
+        background: #fff;
+      }
     }
 
     .session-meta {

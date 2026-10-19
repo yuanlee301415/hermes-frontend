@@ -14,7 +14,7 @@ const LIMIT_SIZE = 1024 ** 2 // 1MB
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import { useAppStore } from '@/store/modules/app.ts'
 import { fetchProfileRuntimeStatusesWithMeta, restartProfileGateway, restartProfileRuntime } from '@/api/profiles.ts'
-import ProfileAvatarView from '../ProfileAvatar/index.vue'
+import ProfileAvatarView from '@/components/hermes/profiles/ProfileAvatar/index.vue'
 
 defineOptions({ name: 'ProfileSelector' })
 
