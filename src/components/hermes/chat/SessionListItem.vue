@@ -48,8 +48,6 @@ const emit = defineEmits<{
   (e: 'contextmenu', evt: MouseEvent): void
   // 批量选择》选择单个会话
   (e: 'toggle-select'): void
-  // 删除会话
-  (e: 'delete'): void
 }>()
 
 
@@ -94,13 +92,6 @@ const emit = defineEmits<{
         </n-text>
       </n-flex>
     </div>
-
-    <n-popconfirm v-if="!selectable" @positive-click="emit('delete')">
-      <template #trigger>
-        <n-text depth="2" class="session-item-delete" @click.stop>&times;</n-text>
-      </template>
-      确定删除此会话吗？
-    </n-popconfirm>
   </a>
 </template>
 
@@ -115,6 +106,14 @@ const emit = defineEmits<{
   transition: all 0.15s ease;
 
   &:hover, &.active {
+    .session-title {
+      color: var(--text-primary);
+    }
+  }
+  &:hover {
+    background-color: rgba(var(--accent-primary-rgb), .06);
+  }
+  &.active {
     background-color: rgba(var(--accent-primary-rgb), .12);
   }
 
@@ -150,12 +149,5 @@ const emit = defineEmits<{
     }
   }
 
-  .session-item-delete {
-    font-size: 12px;
-
-    &:hover {
-      color: var(--error);
-    }
-  }
 }
 </style>

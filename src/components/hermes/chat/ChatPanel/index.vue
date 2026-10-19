@@ -22,7 +22,6 @@ import { Session } from '@/models/Session.ts'
 import { getCodingAgentsStatusApi } from '@/api/coding-agent.ts'
 import { TOOL_CODING_AGENTS_ROUTE_NAME } from '@/router/routes/modules/tool.ts'
 import { batchDeleteSessions } from '@/api/sessions.ts'
-import { deleteSessionApi } from '@/api/sessions.ts'
 import { NewChatModel } from './modules/NewChatForm/NewChatModel.ts'
 </script>
 
@@ -139,23 +138,6 @@ async function handleSwitchSession(sessionId: string) {
       sessionId
     }
   })
-}
-
-/**
- * 删除会话
- * @param sid 会话 ID
- */
-async function onDeleteSession(sid: Session['id']) {
-  const target = chatStore.sessions.find(_ => _.id === sid)
-  const ok = await deleteSessionApi(sid, target?.profile)
-  if (!ok) {
-    window.$message?.error('删除失败')
-    return false
-  }
-  void chatStore.removeSession(sid)
-  window.$message?.success('会话已删除')
-  // 从置顶列表中移除
-  sessionPrefsStore.removePinneds([sid])
 }
 
 /**
@@ -452,7 +434,6 @@ function sortSessionsWithActiveFirst(items: Session[]): Session[] {
               @switch-session="handleSwitchSession(session.id)"
               @contextmenu="onSessionContextmenu($event, session.id)"
               @toggle-select="onToggleSelection(session.id)"
-              @delete="onDeleteSession(session.id)"
             />
           </template>
           <SessionListItem
@@ -467,7 +448,6 @@ function sortSessionsWithActiveFirst(items: Session[]): Session[] {
             @switch-session="handleSwitchSession(session.id)"
             @contextmenu="onSessionContextmenu($event, session.id)"
             @toggle-select="onToggleSelection(session.id)"
-            @delete="onDeleteSession(session.id)"
           />
 
         </template>

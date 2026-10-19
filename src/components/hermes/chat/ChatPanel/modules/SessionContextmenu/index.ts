@@ -1,4 +1,5 @@
 import type { DropdownOption } from 'naive-ui'
+import { NText } from 'naive-ui'
 
 // 右键菜单 Keys
 export const CONTEXTMENU_KEYS = {
@@ -16,7 +17,8 @@ export const CONTEXTMENU_KEYS = {
   ExportCompressedTxt: 'export-compressed-txt',
   OpenLink: 'open-link',
   CopyLink: 'copy-link',
-  CopyId: 'copy-id'
+  CopyId: 'copy-id',
+  Delete: 'delete'
 } as const;
 
 export type ContextmenuKey = typeof CONTEXTMENU_KEYS[keyof typeof CONTEXTMENU_KEYS]
@@ -49,6 +51,18 @@ export function generateContextmenuOptions(showPin: boolean) {
     { label: '在新标签页打开', key: CONTEXTMENU_KEYS.OpenLink },
     { label: '复制会话链接', key: CONTEXTMENU_KEYS.CopyLink },
     { label: '复制会话ID', key: CONTEXTMENU_KEYS.CopyId },
+    { label: '删除', key: CONTEXTMENU_KEYS.Delete },
   ]
   return options
+}
+
+/**
+ * 渲染菜单项 Label
+ * @param option 菜单项
+ * @return NText VNode
+ */
+export function renderLabel(option: DropdownOption) {
+  return h(NText, {
+    type: option.key === CONTEXTMENU_KEYS.Delete ? 'error' : 'default',
+  }, { default: () => option.label})
 }

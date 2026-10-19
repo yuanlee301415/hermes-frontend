@@ -1,9 +1,20 @@
+<!--
+会话列表项》右键菜单
+- 置顶 / 取消置顶
+- 重命名
+- 工作区
+- 在新标签页打开
+- 复制会话链接
+- 复制会话ID
+- 删除
+- 导出会话
+-->
 <script lang="ts">
 import { SESSION_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 import { Session } from '@/models/Session.ts'
-import { renameSessionApi, setSessionWorkspaceApi, exportSessionApi } from '@/api/sessions.ts'
+import { renameSessionApi, setSessionWorkspaceApi, exportSessionApi, deleteSessionApi } from '@/api/sessions.ts'
 import { copyToClipboard } from '@/utils/clipboard.ts'
-import { type ContextmenuKey, CONTEXTMENU_KEYS, generateContextmenuOptions } from './index.ts'
+import { type ContextmenuKey, CONTEXTMENU_KEYS, generateContextmenuOptions, renderLabel } from './index.ts'
 </script>
 
 <script setup lang="ts">
@@ -117,6 +128,11 @@ function handleContextMenuSelect(key: ContextmenuKey) {
     // 复制会话ID
     case CONTEXTMENU_KEYS.CopyId: {
       copySessionId(contextmenu.sid)
+      break
+    }
+    // 删除
+    case CONTEXTMENU_KEYS.Delete: {
+      deleteSession(contextmenu.sid)
       break
     }
     // 导出会话
@@ -245,6 +261,34 @@ async function copySessionId(sid: Session['id']) {
     window.$message?.error('复制失败')
   }
 }
+
+/**
+ * 删除会话
+ * @param sid 会话ID
+ */
+function deleteSession(sid: Session['id']) {
+  const dialog = window.$dialog?.warning({
+    content: '确定删除此会话？',
+    positiveText: '确定',
+    negativeText: '取消',
+    draggable: true,
+    onPositiveClick: async () => {
+      dialog!.loading = true
+      const target = chatStore.sessions.find(_ => _.id === sid)
+      const ok = await deleteSessionApi(sid, target?.profile)
+      if (ok) {
+        void chatStore.removeSession(sid)
+        window.$message?.success('会话已删除')
+        // 从置顶列表中移除
+        sessionPrefsStore.removePinneds([sid])
+      } else {
+        window.$message?.error('删除失败')
+      }
+      dialog!.loading = false
+      return ok
+    }
+  })
+}
 </script>
 
 <template>
@@ -257,6 +301,7 @@ async function copySessionId(sid: Session['id']) {
       :options="menuOptions"
       :show="contextmenu.visible"
       :on-clickoutside="handleClickOutside"
+      :render-label="renderLabel"
       @select="handleContextMenuSelect"
     />
 
