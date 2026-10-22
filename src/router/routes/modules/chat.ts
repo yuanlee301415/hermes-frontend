@@ -6,6 +6,7 @@ const CHAT_ROOT_NAME = 'Chat'
 
 export const CHAT_ROUTE_NAME = CHAT_ROOT_NAME + '.Chat'
 export const SESSION_ROUTE_NAME = CHAT_ROOT_NAME + '.Session'
+export const SEARCH_ROUTE_NAME = CHAT_ROOT_NAME + '.Search'
 export const CHAT_ROUTE_PATH = '/chat/chat'
 
 const CHAT_ROUTE: AppRouteRecordRaw = {
@@ -53,7 +54,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
     },
     {
       path: 'search',
-      name: CHAT_ROOT_NAME + '.Search',
+      name: SEARCH_ROUTE_NAME,
       meta: {
         title: '搜索',
         localIcon: 'menu-search',

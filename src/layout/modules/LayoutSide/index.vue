@@ -9,7 +9,8 @@ import { useRoutesStore } from '@/store/modules/routes.ts'
 import { router } from '@/router'
 import { useAppStore } from '@/store/modules/app.ts'
 import { useSvgIcon } from '@/hooks/svgIcon.ts'
-import { SESSION_ROUTE_NAME, CHAT_ROUTE_PATH } from '@/router/routes/modules/chat.ts'
+import { SESSION_ROUTE_NAME, CHAT_ROUTE_NAME, SEARCH_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
+import SessionSearch from '@/components/hermes/chat/SessionSearch.vue'
 import LanguageSwitch from '../LanguageSwitch.vue'
 import ProfileSelector from '../ProfileSelector/index.vue'
 
@@ -20,21 +21,24 @@ const route = useRoute()
 const routesStore = useRoutesStore()
 const appStore = useAppStore()
 const { SvgIconVNode } = useSvgIcon()
-const selectedKey = ref(route.path)
+const selectedKey = computed({
+  get() {
+    if (route.name === SESSION_ROUTE_NAME) return CHAT_ROUTE_NAME
+    return route.name as string
+  },
+  set(val) {
+    if (val === SEARCH_ROUTE_NAME) return
+  }
+})
+const sessionSearchRef = useTemplateRef<InstanceType<typeof SessionSearch>>('sessionSearchRef')
 
-watch(
-  route,
-  (val) => {
-    selectedKey.value = val.name === SESSION_ROUTE_NAME ?  CHAT_ROUTE_PATH : val.path
-  },
-  {
-    immediate: true,
-    deep: true,
-  },
-)
 
 function handleRoute(key: string) {
-  router.push(key)
+  if (key === SEARCH_ROUTE_NAME) {
+    sessionSearchRef.value?.openModal()
+    return
+  }
+  router.push({ name: key })
 }
 
 function renderMenuIcon(menu: MenuOption) {
@@ -70,7 +74,7 @@ function renderMenuIcon(menu: MenuOption) {
         :collapsed-icon-size="18"
         :icon-size="18"
         :render-icon="renderMenuIcon"
-        key-field="path"
+        key-field="name"
         @update:value="handleRoute"
       />
     </nav>
@@ -143,6 +147,8 @@ function renderMenuIcon(menu: MenuOption) {
         </n-button>
       </n-flex>
     </div>
+
+    <SessionSearch ref="sessionSearchRef"/>
   </aside>
 </template>
 

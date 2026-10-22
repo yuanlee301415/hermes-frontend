@@ -36,6 +36,12 @@ export interface SessionSummary {
   webui_imported?: boolean
 }
 
+export interface SessionSearchResult extends SessionSummary {
+  matched_message_id: number | null
+  snippet: string
+  rank: number
+}
+
 export interface HermesMessage {
   id: number
   session_id: string
@@ -66,6 +72,20 @@ export async function getSessionsApi(source?: string, limit?: number, profile?: 
     method: 'get'
   })
   return res.sessions
+}
+
+// 搜索：会话列表
+export async function searchSessionsApi(q: string, source?: string, limit?: number, profile?: string): Promise<SessionSearchResult[]> {
+  const params = new URLSearchParams()
+  params.set('q', q)
+  if (source) params.set('source', source)
+  if (limit) params.set('limit', String(limit))
+  if (profile) params.set('profile', profile)
+  const query = params.toString()
+  const res = await request<{results: SessionSearchResult[]}>(`api/hermes/search/sessions?${query}`, {
+    method: 'get'
+  })
+  return res.results
 }
 
 // 获取：会话上下文长度
