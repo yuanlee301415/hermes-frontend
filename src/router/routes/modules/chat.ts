@@ -2,18 +2,15 @@ import type { AppRouteRecordRaw } from '@/router/types'
 
 import { LAYOUT } from '@/router/constant'
 
-const CHAT_ROOT_NAME = 'Chat'
-
+export const CHAT_ROOT_NAME = 'Chat'
 export const CHAT_ROUTE_NAME = CHAT_ROOT_NAME + '.Chat'
 export const SESSION_ROUTE_NAME = CHAT_ROOT_NAME + '.Session'
-export const SEARCH_ROUTE_NAME = CHAT_ROOT_NAME + '.Search'
-export const CHAT_ROUTE_PATH = '/chat/chat'
 
 const CHAT_ROUTE: AppRouteRecordRaw = {
   path: '/chat',
-  name: 'Chat',
+  name: CHAT_ROOT_NAME,
   component: LAYOUT,
-  redirect: CHAT_ROUTE_PATH,
+  redirect: '/chat/chat',
   meta: {
     title: '对话',
     localIcon: 'menu-chat',
@@ -51,23 +48,7 @@ const CHAT_ROUTE: AppRouteRecordRaw = {
         title: '群聊(beta)',
         localIcon: 'menu-group-chat',
       },
-    },
-    {
-      path: 'search',
-      name: SEARCH_ROUTE_NAME,
-      meta: {
-        title: '搜索',
-        localIcon: 'menu-search',
-      },
-    },
-    {
-      path: 'api-relay',
-      name: CHAT_ROOT_NAME + '.ApiRelay',
-      meta: {
-        title: '饲料',
-        localIcon: 'menu-api-relay',
-      },
-    },
+    }
   ],
 }
 

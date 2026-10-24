@@ -1,43 +1,81 @@
 <!--
 Sidebar
 -->
-<script setup lang="ts">
+<script lang="ts">
 import type { MenuOption } from 'naive-ui'
+import { SESSION_ROUTE_NAME, CHAT_ROOT_NAME, CHAT_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
+import { Menu } from '@/models/Menu.ts'
+
+const TITLE = import.meta.env.VITE_APP_TITLE
+const SEARCH_KEY = 'Search'
+const RELAY_KEY = 'Relay'
+const RELAY_PATH = 'https://apikey.fun/register'
+</script>
+
+<script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { ChevronBack, ChevronForward, ChevronDownSharp, ExitOutline, LogoGithub, GlobeOutline, SunnyOutline } from '@vicons/ionicons5'
 import { useRoutesStore } from '@/store/modules/routes.ts'
 import { router } from '@/router'
 import { useAppStore } from '@/store/modules/app.ts'
 import { useSvgIcon } from '@/hooks/svgIcon.ts'
-import { SESSION_ROUTE_NAME, CHAT_ROUTE_NAME, SEARCH_ROUTE_NAME } from '@/router/routes/modules/chat.ts'
 import SessionSearch from '@/components/hermes/chat/SessionSearch.vue'
 import LanguageSwitch from '../LanguageSwitch.vue'
 import ProfileSelector from '../ProfileSelector/index.vue'
 
 defineOptions({ name: 'LayoutSide' })
 
-const TITLE = import.meta.env.VITE_APP_TITLE
 const route = useRoute()
 const routesStore = useRoutesStore()
 const appStore = useAppStore()
 const { SvgIconVNode } = useSvgIcon()
+
+const menuOptions = computed(() => {
+  const menus = routesStore.menus
+  const chat = menus.find(_ => _.name === CHAT_ROOT_NAME)
+  if (chat?.children) {
+    chat.children.push(
+      new Menu({
+        path: undefined as unknown as string,
+        name: SEARCH_KEY,
+        title: '搜索',
+        localIcon: 'menu-search'
+      }),
+      new Menu({
+        path: RELAY_PATH,
+        name: RELAY_KEY,
+        title: '饲料',
+        localIcon: 'menu-api-relay'
+      })
+    )
+  }
+  return menus
+})
+
 const selectedKey = computed({
   get() {
     if (route.name === SESSION_ROUTE_NAME) return CHAT_ROUTE_NAME
     return route.name as string
   },
   set(val) {
-    if (val === SEARCH_ROUTE_NAME) return
+    if (val === SEARCH_KEY) return
   }
 })
+
 const sessionSearchRef = useTemplateRef<InstanceType<typeof SessionSearch>>('sessionSearchRef')
 
 
 function handleRoute(key: string) {
-  if (key === SEARCH_ROUTE_NAME) {
+  if (key === SEARCH_KEY) {
     sessionSearchRef.value?.openModal()
     return
   }
+
+  if (key === RELAY_KEY) {
+    window.open(RELAY_PATH, '_blank')
+    return
+  }
+
   router.push({ name: key })
 }
 
@@ -65,7 +103,7 @@ function renderMenuIcon(menu: MenuOption) {
     <nav class="sidebar-nav">
       <n-menu
         v-model:value="selectedKey"
-        :options="routesStore.menus as unknown as MenuOption[]"
+        :options="menuOptions as unknown as MenuOption[]"
         :default-expand-all="true"
         :root-indent="15"
         :indent="15"
