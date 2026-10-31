@@ -28,16 +28,17 @@ const props = defineProps<{
   selected: boolean
 }>()
 
-const jobsStore = useJobsStore()
-
-const action = ref<typeof ACTION[keyof typeof ACTION]>()
-
 const emit = defineEmits<{
   // 选择任务
   (e: 'select', id: Job['id']): void
   // 编辑任务
   (e: 'edit-job', id: Job['id']): void
 }>()
+
+const jobsStore = useJobsStore()
+
+// 当前操作
+const action = ref<typeof ACTION[keyof typeof ACTION]>()
 
 // 调度表达式展示文本
 const scheduleExpr = computed(() => scheduleToDisplayText(props.job.schedule, props.job.schedule_display || '-'))

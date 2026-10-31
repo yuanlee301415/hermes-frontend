@@ -1,5 +1,5 @@
 <!--
-任务
+任务（@2026-10-31）
 - 列表
   - 选择任务
   - 暂停任务
@@ -7,13 +7,14 @@
   - 立即运行
   - 编辑任务
   - 删除任务
-- 运行历史
+- 运行历史列表
+- 运行历史详情
 - 创建/编辑任务弹窗&表单
 -->
 <script lang="ts">
 import { type JobDTO, Job } from '@/models/Job.ts'
-import { getJobApi, createJobApi, updateJobApi } from '@/api/jobs.ts'
 import { type JobFormModel } from '@/components/hermes/jobs/JobForm/index.ts'
+import { getJobApi, createJobApi, updateJobApi } from '@/api/jobs.ts'
 </script>
 
 <script setup lang="ts">
@@ -22,22 +23,30 @@ import { useJobsStore } from '@/store/modules/jobs.ts'
 import { useProfilesStore } from '@/store/modules/profiles.ts'
 import JobCard from '@/components/hermes/jobs/JobCard.vue'
 import JobForm from '@/components/hermes/jobs/JobForm/index.vue'
+import JobRunHistory from '@/components/hermes/jobs/JobRunHistory.vue'
 
 const jobsStore = useJobsStore()
 const profilesStore = useProfilesStore()
+const loading = ref(false)
 
 const selectedJobId = ref<Job['id']>()
 const jobFormRef = useTemplateRef<InstanceType<typeof JobForm>>('jobFormRef')
 
+// 创建/编辑任务弹窗
 const jobModal = reactive<{
+  // 是否显示
   visible: boolean
-  loading: boolean
+  // 提交中
+  submitting: boolean
+  // 当前选择的任务
   job: Job
+  // 弹窗标题
   title: Readonly<string>
+  // 提交按钮文字
   positiveText: Readonly<string>
 }>({
   visible: false,
-  loading: false,
+  submitting: false,
   job: new Job({} as Job),
   get title() {
     return this.job?.id ? '编辑任务' : '创建任务'
@@ -47,9 +56,24 @@ const jobModal = reactive<{
   }
 })
 
-onMounted(() => {
-  void reloadJobsForProfile()
-})
+// 任务 `id` -> `name` 映射
+const jobNameMap = computed<Map<Job['id'], string>>(() => new Map([
+    ...(jobsStore.jobs.map(_ => [_.id, _.name] as const))
+  ])
+)
+
+reloadJobsForProfile()
+
+// 重新加载 Profiles
+async function reloadJobsForProfile() {
+  loading.value = true
+  try {
+    await ensureProfileSelection()
+    await jobsStore.fetchJobs()
+  } finally {
+    loading.value = false
+  }
+}
 
 // 确认已加载 Profiles
 async function ensureProfileSelection() {
@@ -58,17 +82,8 @@ async function ensureProfileSelection() {
   }
 }
 
-// 重新加载 Profiles
-async function reloadJobsForProfile() {
-  // selectedJobId.value = undefined
-  // jobsStore.jobs = []
-  await ensureProfileSelection()
-  await jobsStore.fetchJobs()
-}
-
 // 事件：选择任务
 function onSelectJob(id: Job['id']) {
-  console.warn(id)
   selectedJobId.value = id
 }
 
@@ -84,7 +99,7 @@ async function handleSubmit() {
 
 // 编辑任务
 async function updateJob(formData: JobFormModel) {
-  jobModal.loading = true
+  jobModal.submitting = true
   try {
     const payload: JobDTO = {
       name: formData.name,
@@ -100,13 +115,13 @@ async function updateJob(formData: JobFormModel) {
     console.error(e)
     return false
   } finally {
-    jobModal.loading = false
+    jobModal.submitting = false
   }
 }
 
 // 创建任务
 async function createJob(formData: JobFormModel) {
-  jobModal.loading = true
+  jobModal.submitting = true
   try {
     const payload: JobDTO = {
       name: formData.name,
@@ -122,7 +137,7 @@ async function createJob(formData: JobFormModel) {
     console.error(e)
     return false
   } finally {
-    jobModal.loading = false
+    jobModal.submitting = false
   }
 }
 
@@ -161,8 +176,11 @@ async function onEditJob(id: Job['id']) {
       </template>
     </n-page-header>
     <div class="jobs-split">
+
+      <!--List-->
       <div class="jobs-top">
-        <n-spin :show="jobsStore.loading">
+        <n-spin v-if="loading" style="position: absolute; left: 0;right:0;"></n-spin>
+        <template v-else>
           <div v-if="jobsStore.jobs.length" class="jobs-grid">
             <JobCard
               v-for="job of jobsStore.jobs"
@@ -174,10 +192,18 @@ async function onEditJob(id: Job['id']) {
             />
           </div>
           <n-empty v-else />
-        </n-spin>
+        </template>
       </div>
+      <!--List End-->
+
       <n-divider style="margin: 0;" />
-      <div class="jobs-bottom"></div>
+
+      <!--History-->
+      <div class="jobs-bottom">
+        <JobRunHistory :job-id="selectedJobId" :job-name-map="jobNameMap" />
+      </div>
+      <!--History End-->
+
     </div>
 
     <!--创建/编辑 Job-->
@@ -186,7 +212,7 @@ async function onEditJob(id: Job['id']) {
       :title="jobModal.title"
       :show-icon="false"
       :positive-text="jobModal.positiveText"
-      :loading="jobModal.loading"
+      :loading="jobModal.submitting"
       negative-text="取消"
       preset="dialog"
       @positive-click="handleSubmit"
@@ -213,12 +239,14 @@ async function onEditJob(id: Job['id']) {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 
     .jobs-top {
       flex: 1;
       min-height: 120px;
       overflow-y: auto;
       padding: 20px;
+      position: relative;
 
       .jobs-grid {
         display: grid;

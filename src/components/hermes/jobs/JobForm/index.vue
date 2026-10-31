@@ -1,5 +1,5 @@
 <!--
-任务 表单
+创建/编辑-任务 表单
 -->
 <script lang="ts">
 import type { FormRules, FormInst, SelectOption } from 'naive-ui'
@@ -64,9 +64,9 @@ const targetOptions = computed(() => {
   return options
 })
 
-onMounted(async () => {
+onBeforeMount(() => {
   if (!Object.keys(settingsStore.platforms || {}).length) {
-    await settingsStore.fetchSettings()
+    settingsStore.fetchSettings()
   }
 })
 
