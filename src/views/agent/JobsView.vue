@@ -162,7 +162,7 @@ async function onEditJob(id: Job['id']) {
 
 <template>
   <div class="jobs-view h-full">
-    <n-page-header class="jobs-header">
+    <n-page-header class="page-header">
       <template #title>定时任务</template>
       <template #extra>
         <n-button type="primary" size="small" @click="handleCreate">

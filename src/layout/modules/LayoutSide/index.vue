@@ -238,7 +238,7 @@ function renderMenuIcon(menu: MenuOption) {
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 60px;
+    height: var(--sidebar-logo-height);
     padding: 0 12px;
     margin: 0 -12px;
     color: var(--text-primary);

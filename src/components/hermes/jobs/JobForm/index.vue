@@ -3,8 +3,8 @@
 -->
 <script lang="ts">
 import type { FormRules, FormInst, SelectOption } from 'naive-ui'
+import { type PlatformKey } from '@/api/config.ts'
 import { scheduleToEditableInput, jobRepeatToEditValue } from '@/api/jobs.ts'
-import { type PlatformsKey } from '@/api/config.ts'
 import { Job } from '@/models/Job.ts'
 import { SCHEDULE_PRESETS, CHANNELS } from '../shared.ts'
 import { type JobFormModel, isDeliverTargetConfigured } from './index.ts'
@@ -58,7 +58,7 @@ const targetOptions = computed(() => {
     options.push({
       label: ch.label,
       value: ch.key,
-      disabled: !isDeliverTargetConfigured(settingsStore.platforms, ch.key as PlatformsKey)
+      disabled: !isDeliverTargetConfigured(settingsStore.platforms, ch.key as PlatformKey)
     })
   }
   return options
