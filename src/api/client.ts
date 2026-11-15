@@ -24,8 +24,9 @@ export function hasApiKey() {
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${DEFAULT_BASE_URL}${path}`
+  const isFormDataBody = options.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' })
   }
   const apiKey = getApiKey()
   if (apiKey) {

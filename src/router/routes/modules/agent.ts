@@ -44,7 +44,7 @@ const PROXY_ROUTE: AppRouteRecordRaw = {
     {
       path: 'skills',
       name: PROXY_ROUTE_NAME + '.Skills',
-      component: () => import('@/views/agent/SkillsView.vue'),
+      component: () => import('@/views/agent/skills/index.vue'),
       meta: {
         title: '技能',
         localIcon: 'menu-skills',
