@@ -26,7 +26,9 @@ async function loadSettingsForProfile() {
     </n-page-header>
 
     <div class="channels-body">
-      <n-spin v-if="settingsStore.loading || settingsStore.saving" style="position: absolute; inset: 0;" />
+      <div v-if="settingsStore.loading || settingsStore.saving" class="channels-spin">
+        <n-spin />
+      </div>
       <PlatformSettings />
     </div>
   </div>
@@ -43,6 +45,13 @@ async function loadSettingsForProfile() {
     overflow-y: auto;
     padding: 20px;
     position: relative;
+
+    .channels-spin {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+    }
   }
 }
 </style>

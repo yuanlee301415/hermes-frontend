@@ -81,20 +81,21 @@ async function handleExpand(keys: RunEntry['key'][]) {
     </n-flex>
 
     <div class="history-body">
-      <n-spin v-if="loading" style="position: absolute;left: 0;right: 0;"></n-spin>
+      <div v-if="loading" class="history-spin">
+        <n-spin />
+      </div>
 
-      <template v-else>
-        <n-collapse v-if="runs.length" accordion @update:expanded-names="handleExpand">
-          <n-collapse-item v-for="run of runs" :key="run.key" :name="run.key" :title="`${getJobName(run.jobId)} - ${run.runTime}`">
-            <template #header-extra>
-              <n-text>{{ formatSize(run.size) }}</n-text>
-            </template>
-            <n-spin v-if="loadingKeys.has(run.key)" size="small"></n-spin>
-            <MarkdownRender v-else-if="expandedContent.has(run.key)" :content="expandedContent.get(run.key)!" />
-          </n-collapse-item>
-        </n-collapse>
-        <n-empty v-else />
-      </template>
+      <n-empty v-if="!runs.length" />
+
+      <n-collapse v-else accordion @update:expanded-names="handleExpand">
+        <n-collapse-item v-for="run of runs" :key="run.key" :name="run.key" :title="`${getJobName(run.jobId)} - ${run.runTime}`">
+          <template #header-extra>
+            <n-text>{{ formatSize(run.size) }}</n-text>
+          </template>
+          <n-spin v-if="loadingKeys.has(run.key)" size="small"></n-spin>
+          <MarkdownRender v-else-if="expandedContent.has(run.key)" :content="expandedContent.get(run.key)!" />
+        </n-collapse-item>
+      </n-collapse>
     </div>
   </div>
 </template>
@@ -116,6 +117,13 @@ async function handleExpand(keys: RunEntry['key'][]) {
     flex: 1;
     overflow-y: auto;
     padding: 10px 20px 20px;
+
+    .history-spin {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+    }
   }
 }
 </style>

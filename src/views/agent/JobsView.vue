@@ -179,20 +179,23 @@ async function onEditJob(id: Job['id']) {
 
       <!--List-->
       <div class="jobs-top">
-        <n-spin v-if="loading" style="position: absolute; left: 0;right:0;"></n-spin>
-        <template v-else>
-          <div v-if="jobsStore.jobs.length" class="jobs-grid">
-            <JobCard
-              v-for="job of jobsStore.jobs"
-              :key="job.id"
-              :job="job"
-              :selected="selectedJobId === job.id"
-              @select="onSelectJob"
-              @edit-job="onEditJob"
-            />
-          </div>
-          <n-empty v-else />
-        </template>
+        <div v-if="loading" class="jobs-spin">
+          <n-spin/>
+        </div>
+
+        <n-empty v-if="!jobsStore.jobs.length" />
+
+        <div v-else class="jobs-grid">
+          <JobCard
+            v-for="job of jobsStore.jobs"
+            :key="job.id"
+            :job="job"
+            :selected="selectedJobId === job.id"
+            @select="onSelectJob"
+            @edit-job="onEditJob"
+          />
+        </div>
+
       </div>
       <!--List End-->
 
@@ -247,6 +250,13 @@ async function onEditJob(id: Job['id']) {
       overflow-y: auto;
       padding: 20px;
       position: relative;
+
+      .jobs-spin {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+      }
 
       .jobs-grid {
         display: grid;

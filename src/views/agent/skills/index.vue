@@ -292,9 +292,13 @@ async function handleSaveExternal() {
     </n-page-header>
 
     <div class="skills-body">
-      <n-spin v-if="loading && !categories.length" style="position: absolute; inset: 0;" />
+      <div v-if="loading" class="skills-spin">
+        <n-spin />
+      </div>
 
-      <template v-else-if="categories.length">
+      <n-empty v-if="!categories.length" style="padding: 20px;" />
+
+      <template v-else>
         <div class="skills-split">
 
           <div class="skills-sidebar">
@@ -339,7 +343,6 @@ async function handleSaveExternal() {
         </div>
       </template>
 
-      <n-empty v-else style="padding: 20px;" />
     </div>
 
     <!--导入技能-->
@@ -384,6 +387,13 @@ async function handleSaveExternal() {
     flex: 1;
     overflow: hidden;
     position: relative;
+
+    .skills-spin {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+    }
 
     .skills-split {
       display: flex;
